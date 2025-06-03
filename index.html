@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Merger with Table of Contents</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .upload-section {
+            margin-bottom: 30px;
+        }
+
+        .add-file-btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background: linear-gradient(45deg, #56ab2f, #a8e6cf);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            margin-bottom: 20px;
+            font-size: 16px;
+        }
+
+        .add-file-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(86, 171, 47, 0.4);
+        }
+
+        .pdf-item {
+            background: rgba(255, 255, 255, 0.9);
+            border: 2px solid #e1e5e9;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .pdf-item:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.1);
+        }
+
+        .pdf-item.has-file {
+            border-color: #56ab2f;
+            background: linear-gradient(45deg, rgba(86, 171, 47, 0.05), rgba(168, 230, 207, 0.05));
+        }
+
+        .pdf-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .pdf-number {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 25px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .remove-btn {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 16px;
+        }
+
+        .remove-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4);
+        }
+
+        .file-input-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .file-name {
+            color: #333;
+            font-weight: 500;
+            flex: 1;
+        }
+
+        .toc-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e1e5e9;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        .toc-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+
+        .merge-btn {
+            flex: 1;
+            min-width: 200px;
+            padding: 16px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .merge-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .merge-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .clear-all-btn {
+            padding: 16px 24px;
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .clear-all-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(255, 107, 107, 0.4);
+        }
+
+        .progress {
+            margin-top: 20px;
+            text-align: center;
+            color: #666;
+            font-weight: 500;
+            background: rgba(102, 126, 234, 0.1);
+            padding: 15px;
+            border-radius: 12px;
+        }
+
+        .success {
+            background: linear-gradient(45deg, #56ab2f, #a8e6cf);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin-top: 20px;
+            text-align: center;
+            font-weight: 600;
+            line-height: 1.6;
+        }
+
+        .error {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin-top: 20px;
+            text-align: center;
+            font-weight: 600;
+            line-height: 1.6;
+        }
+
+        .download-btn {
+            display: inline-block;
+            padding: 14px 28px;
+            background: linear-gradient(45deg, #56ab2f, #a8e6cf);
+            color: white;
+            text-decoration: none;
+            border-radius: 50px;
+            font-weight: 600;
+            margin-top: 15px;
+            transition: all 0.3s ease;
+            font-size: 16px;
+        }
+
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(86, 171, 47, 0.4);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+            font-size: 18px;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .stats {
+            background: rgba(102, 126, 234, 0.1);
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            text-align: center;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .drag-drop-area {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 40px 20px;
+            text-align: center;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .drag-drop-area.dragover {
+            border-color: #56ab2f;
+            background: rgba(86, 171, 47, 0.1);
+            transform: scale(1.02);
+        }
+
+        .drag-drop-text {
+            color: #667eea;
+            font-size: 18px;
+            font-weight: 500;
+            margin-bottom: 10px;
+        }
+
+        .drag-drop-subtext {
+            color: #999;
+            font-size: 14px;
+        }
+
+        .move-btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 20px;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-size: 12px;
+            margin: 0 5px;
+            transition: all 0.3s ease;
+        }
+
+        .move-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .move-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>📚 Enhanced PDF Merger</h1>
+
+    <div class="stats" id="stats">
+        <span id="file-count">0</span> PDFs ready to merge
+    </div>
+
+    <div class="drag-drop-area" id="dragDropArea">
+        <div class="drag-drop-text">📎 Drag & Drop PDF files here</div>
+        <div class="drag-drop-subtext">or click "Add PDF File" below</div>
+    </div>
+
+    <div class="upload-section">
+        <button id="addFileBtn" class="add-file-btn">+ Add PDF File</button>
+
+        <div id="pdfContainer">
+            <div class="empty-state" id="emptyState">
+                <div class="empty-state-icon">📄</div>
+                <div>No PDF files added yet</div>
+                <div style="font-size: 14px; margin-top: 10px; color: #999;">
+                    Click "Add PDF File" or drag & drop files to get started
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button id="mergeBtn" class="merge-btn" disabled>🔗 Merge PDFs & Create TOC</button>
+        <button id="clearAllBtn" class="clear-all-btn" style="display: none;">🗑️ Clear All</button>
+    </div>
+
+    <div id="progress" class="progress" style="display: none;"></div>
+    <div id="result" style="display: none;"></div>
+</div>
+
+<script>
+    const { PDFDocument, rgb, StandardFonts } = PDFLib;
+
+    let pdfFiles = new Map();
+    let fileCounter = 0;
+
+    const dragDropArea = document.getElementById('dragDropArea');
+    const pdfContainer = document.getElementById('pdfContainer');
+    const emptyState = document.getElementById('emptyState');
+    const addFileBtn = document.getElementById('addFileBtn');
+    const mergeBtn = document.getElementById('mergeBtn');
+    const clearAllBtn = document.getElementById('clearAllBtn');
+    const fileCountSpan = document.getElementById('file-count');
+
+    // Drag and drop functionality
+    dragDropArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dragDropArea.classList.add('dragover');
+    });
+
+    dragDropArea.addEventListener('dragleave', () => {
+        dragDropArea.classList.remove('dragover');
+    });
+
+    dragDropArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dragDropArea.classList.remove('dragover');
+
+        const files = Array.from(e.dataTransfer.files).filter(file => file.type === 'application/pdf');
+        files.forEach(file => addPdfFile(file));
+    });
+
+    dragDropArea.addEventListener('click', () => {
+        addFileBtn.click();
+    });
+
+    addFileBtn.addEventListener('click', () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.pdf';
+        input.multiple = true;
+        input.onchange = (e) => {
+            Array.from(e.target.files).forEach(file => addPdfFile(file));
+        };
+        input.click();
+    });
+
+    clearAllBtn.addEventListener('click', () => {
+        if (confirm('Are you sure you want to remove all PDF files?')) {
+            clearAllFiles();
+        }
+    });
+
+    function addPdfFile(file) {
+        if (file.type !== 'application/pdf') {
+            alert('Please select only PDF files.');
+            return;
+        }
+
+        // Basic file validation
+        if (file.size === 0) {
+            alert(`The file "${file.name}" appears to be empty.`);
+            return;
+        }
+
+        if (file.size > 100 * 1024 * 1024) { // 100MB limit
+            alert(`The file "${file.name}" is too large (over 100MB). Please use a smaller file.`);
+            return;
+        }
+
+        fileCounter++;
+        const fileId = `pdf_${fileCounter}`;
+
+        pdfFiles.set(fileId, {
+            file: file,
+            title: `Section ${fileCounter}`,
+            order: fileCounter
+        });
+
+        createPdfItem(fileId, file.name);
+        updateUI();
+    }
+
+    function createPdfItem(fileId, fileName) {
+        const pdfItem = document.createElement('div');
+        pdfItem.className = 'pdf-item has-file';
+        pdfItem.id = fileId;
+
+        pdfItem.innerHTML = `
+                <div class="pdf-header">
+                    <span class="pdf-number">PDF ${pdfFiles.get(fileId).order}</span>
+                    <div>
+                        <button class="move-btn" onclick="moveFile('${fileId}', 'up')" ${pdfFiles.get(fileId).order === 1 ? 'disabled' : ''}>↑</button>
+                        <button class="move-btn" onclick="moveFile('${fileId}', 'down')" ${pdfFiles.get(fileId).order === pdfFiles.size ? 'disabled' : ''}>↓</button>
+                        <button class="remove-btn" onclick="removePdfFile('${fileId}')">&times;</button>
+                    </div>
+                </div>
+                <div class="file-input-wrapper">
+                    <span class="file-name">📄 ${fileName}</span>
+                </div>
+                <input type="text" class="toc-input" placeholder="Enter title for table of contents"
+                       value="${pdfFiles.get(fileId).title}"
+                       onchange="updateTitle('${fileId}', this.value)">
+            `;
+
+        pdfContainer.appendChild(pdfItem);
+    }
+
+    function moveFile(fileId, direction) {
+        const fileData = pdfFiles.get(fileId);
+        const currentOrder = fileData.order;
+
+        const targetOrder = direction === 'up' ? currentOrder - 1 : currentOrder + 1;
+
+        // Find the file to swap with
+        let targetFileId = null;
+        for (const [id, data] of pdfFiles.entries()) {
+            if (data.order === targetOrder) {
+                targetFileId = id;
+                break;
+            }
+        }
+
+        if (targetFileId) {
+            // Swap orders
+            pdfFiles.get(fileId).order = targetOrder;
+            pdfFiles.get(targetFileId).order = currentOrder;
+
+            // Rebuild the UI
+            rebuildPdfList();
+        }
+    }
+
+    function rebuildPdfList() {
+        // Clear current items
+        const items = pdfContainer.querySelectorAll('.pdf-item');
+        items.forEach(item => item.remove());
+
+        // Sort files by order and recreate
+        const sortedFiles = Array.from(pdfFiles.entries()).sort((a, b) => a[1].order - b[1].order);
+        sortedFiles.forEach(([fileId, fileData]) => {
+            createPdfItem(fileId, fileData.file.name);
+        });
+    }
+
+    function removePdfFile(fileId) {
+        const removedOrder = pdfFiles.get(fileId).order;
+        pdfFiles.delete(fileId);
+        document.getElementById(fileId).remove();
+
+        // Reorder remaining files
+        for (const [id, data] of pdfFiles.entries()) {
+            if (data.order > removedOrder) {
+                data.order--;
+            }
+        }
+
+        rebuildPdfList();
+        updateUI();
+    }
+
+    function updateTitle(fileId, title) {
+        if (pdfFiles.has(fileId)) {
+            pdfFiles.get(fileId).title = title || `Section ${pdfFiles.get(fileId).order}`;
+        }
+    }
+
+    function clearAllFiles() {
+        pdfFiles.clear();
+        pdfContainer.innerHTML = '';
+        fileCounter = 0;
+        updateUI();
+
+        // clear previous merge output
+        document.getElementById('result').innerHTML = '';
+        document.getElementById('result').style.display = 'none';
+        document.getElementById('progress').innerHTML = '';
+        document.getElementById('progress').style.display = 'none';
+    }
+    function updateUI() {
+        const fileCount = pdfFiles.size;
+        fileCountSpan.textContent = fileCount;
+
+        if (fileCount === 0) {
+            emptyState.style.display = 'block';
+            clearAllBtn.style.display = 'none';
+            mergeBtn.disabled = true;
+        } else {
+            emptyState.style.display = 'none';
+            clearAllBtn.style.display = 'inline-block';
+            mergeBtn.disabled = false;
+        }
+    }
+
+    mergeBtn.addEventListener('click', async function() {
+        const progress = document.getElementById('progress');
+        const result = document.getElementById('result');
+
+        // 🔁 Clear previous output in case of re-merge
+        result.innerHTML = '';
+        result.style.display = 'none';
+        progress.innerHTML = '';
+        progress.style.display = 'block';
+
+        if (pdfFiles.size === 0) {
+            result.innerHTML = '<div class="error">❌ Please add at least one PDF file.</div>';
+            result.style.display = 'block';
+            return;
+        }
+
+        mergeBtn.disabled = true;
+        progress.style.display = 'block';
+        progress.textContent = 'Starting PDF merge process...';
+        result.style.display = 'none';
+
+        try {
+            // Create new PDF document
+            const mergedPdf = await PDFDocument.create();
+
+            // Use safe font loading with fallbacks
+            let font, boldFont;
+            try {
+                font = await mergedPdf.embedFont(StandardFonts.Helvetica);
+                boldFont = await mergedPdf.embedFont(StandardFonts.HelveticaBold);
+            } catch (fontError) {
+                console.warn('Font loading failed, using defaults');
+                font = await mergedPdf.embedFont(StandardFonts.TimesRoman);
+                boldFont = font;
+            }
+
+            let currentPage = 0;
+            const sectionPages = new Map();
+            const sortedFiles = Array.from(pdfFiles.entries()).sort((a, b) => a[1].order - b[1].order);
+
+            progress.textContent = 'Creating Table of Contents...';
+
+            // Create TOC page
+            const tocPage = mergedPdf.addPage([612, 792]);
+            const { width, height } = tocPage.getSize();
+
+            // TOC Title
+            tocPage.drawText('Table of Contents', {
+                x: 50,
+                y: height - 80,
+                size: 24,
+                font: boldFont,
+                color: rgb(0.2, 0.2, 0.2)
+            });
+
+            currentPage = 1; // TOC is page 1
+
+            // Process each PDF with enhanced error handling
+            for (let i = 0; i < sortedFiles.length; i++) {
+                const [fileId, fileData] = sortedFiles[i];
+                progress.textContent = `Processing PDF ${i + 1}/${sortedFiles.length}: ${fileData.file.name}`;
+
+                try {
+                    const pdfBytes = await fileData.file.arrayBuffer();
+
+                    // Enhanced PDF loading with multiple fallback strategies
+                    let pdf;
+                    const loadStrategies = [
+                        // Strategy 1: Default with error tolerance
+                        {
+                            ignoreEncryption: true,
+                            throwOnInvalidObject: false
+                        },
+                        // Strategy 2: More permissive parsing
+                        {
+                            ignoreEncryption: true,
+                            throwOnInvalidObject: false,
+                            capNumbers: false
+                        },
+                        // Strategy 3: Minimal parsing
+                        {
+                            ignoreEncryption: true,
+                            throwOnInvalidObject: false,
+                            capNumbers: false,
+                            updateMetadata: false
+                        },
+                        // Strategy 4: Most permissive (minimal options)
+                        {
+                            ignoreEncryption: true
+                        }
+                    ];
+
+                    let loadError = null;
+                    for (let strategyIndex = 0; strategyIndex < loadStrategies.length; strategyIndex++) {
+                        try {
+                            console.log(`Trying load strategy ${strategyIndex + 1} for ${fileData.file.name}`);
+                            pdf = await PDFDocument.load(pdfBytes, loadStrategies[strategyIndex]);
+                            console.log(`Success with strategy ${strategyIndex + 1}`);
+                            break;
+                        } catch (error) {
+                            loadError = error;
+                            console.warn(`Strategy ${strategyIndex + 1} failed:`, error.message);
+                            if (strategyIndex === loadStrategies.length - 1) {
+                                throw error;
+                            }
+                        }
+                    }
+
+                    const pageCount = pdf.getPageCount();
+                    if (pageCount === 0) {
+                        throw new Error('PDF appears to be empty');
+                    }
+
+                    // Record the starting page for this section
+                    sectionPages.set(fileId, currentPage + 1);
+
+                    // Copy pages individually with error handling
+                    for (let pageIndex = 0; pageIndex < pageCount; pageIndex++) {
+                        try {
+                            const [copiedPage] = await mergedPdf.copyPages(pdf, [pageIndex]);
+                            mergedPdf.addPage(copiedPage);
+                            currentPage++;
+                        } catch (pageError) {
+                            console.warn(`Failed to copy page ${pageIndex + 1} from ${fileData.file.name}:`, pageError);
+                            // Continue with next page instead of failing completely
+                        }
+                    }
+
+                } catch (pdfError) {
+                    console.error(`Error processing PDF ${i + 1}:`, pdfError);
+
+                    // Provide more specific error messages based on error type
+                    let errorMessage = `Failed to process "${fileData.file.name}". `;
+
+                    if (pdfError.message.includes('encrypted') || pdfError.message.includes('password')) {
+                        errorMessage += 'This PDF is password protected or encrypted.';
+                    } else if (pdfError.message.includes('Invalid') || pdfError.message.includes('corrupt')) {
+                        errorMessage += 'This PDF file appears to be corrupted or uses an unsupported format.';
+                    } else if (pdfError.message.includes('sizeInBytes')) {
+                        errorMessage += 'This PDF has compatibility issues with the merger. Try re-saving it from another PDF viewer first.';
+                    } else if (pdfError.message.includes('cross-reference') || pdfError.message.includes('xref')) {
+                        errorMessage += 'This PDF has structural issues. Try opening and re-saving it in Adobe Reader or another PDF editor.';
+                    } else if (pdfError.message.includes('stream') || pdfError.message.includes('object')) {
+                        errorMessage += 'This PDF contains elements that cannot be processed. It may have been created with specialized software.';
+                    } else {
+                        errorMessage += `Technical error: ${pdfError.message}`;
+                    }
+
+                    // Option to skip problematic files
+                    const skipConfirm = confirm(
+                        `${errorMessage}\n\nWould you like to skip this file and continue with the remaining PDFs?\n\n` +
+                        `Click OK to skip "${fileData.file.name}" and continue\n` +
+                        `Click Cancel to stop the merge process`
+                    );
+
+                    if (skipConfirm) {
+                        console.log(`Skipping problematic file: ${fileData.file.name}`);
+                        continue; // Skip this file and continue with the next
+                    } else {
+                        throw new Error(errorMessage);
+                    }
+                }
+            }
+
+            if (currentPage <= 1) {
+                throw new Error('No pages were successfully processed from the PDF files.');
+            }
+
+            progress.textContent = 'Adding entries to Table of Contents...';
+
+            // Add TOC entries
+            let yPosition = height - 140;
+            const entriesPerPage = Math.floor((height - 160) / 25);
+            let currentTocPage = tocPage;
+            let entryCount = 0;
+
+            for (const [fileId, fileData] of sortedFiles) {
+                if (!sectionPages.has(fileId)) continue;
+
+                // Create new TOC page if needed
+                if (entryCount > 0 && entryCount % entriesPerPage === 0) {
+                    currentTocPage = mergedPdf.addPage([612, 792]);
+                    yPosition = height - 80;
+                    currentPage++;
+
+                    // Update sectionPages to offset by the new TOC page
+                    for (const [id, pageNum] of sectionPages.entries()) {
+                        sectionPages.set(id, pageNum + 1);
+                    }
+                }
+
+                const title = `${fileData.order}. ${fileData.title}`;
+                const pageNum = sectionPages.get(fileId);
+                const destinationPageIndex = pageNum - 1;
+
+                const titleTextWidth = font.widthOfTextAtSize(title, 14);
+                const pageText = `Page ${pageNum}`;
+                const pageTextWidth = font.widthOfTextAtSize(pageText, 14);
+
+                // Draw the text in black
+                currentTocPage.drawText(title, {
+                    x: 70,
+                    y: yPosition,
+                    size: 14,
+                    font: font,
+                    color: rgb(0, 0, 0)
+                });
+
+                currentTocPage.drawText(pageText, {
+                    x: width - 120,
+                    y: yPosition,
+                    size: 14,
+                    font: font,
+                    color: rgb(0, 0, 0)
+                });
+
+                // Add clickable link annotation to the TOC entry
+                const destinationPage = mergedPdf.getPage(destinationPageIndex);
+                const linkAnnotation = mergedPdf.context.obj({
+                    Type: 'Annot',
+                    Subtype: 'Link',
+                    Rect: [70, yPosition, 70 + titleTextWidth, yPosition + 16],
+                    Border: [0, 0, 0],
+                    A: {
+                        Type: 'Action',
+                        S: 'GoTo',
+                        D: [destinationPage.ref, 'Fit']
+                    }
+                });
+
+                const annots = currentTocPage.node.Annots();
+                if (annots) {
+                    annots.push(linkAnnotation);
+                } else {
+                    currentTocPage.node.set(
+                        'Annots',
+                        mergedPdf.context.obj([linkAnnotation])
+                    );
+                }
+
+                yPosition -= 30; // reduced spacing
+                entryCount++;
+            }
+
+            progress.textContent = 'Generating final PDF file...';
+
+            // Generate the final PDF with enhanced options
+            const pdfBytes = await mergedPdf.save({
+                useObjectStreams: false,
+                addDefaultPage: false,
+                objectsPerTick: 50
+            });
+
+            // Create download link with better blob handling
+            const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+            const url = URL.createObjectURL(blob);
+
+            // Generate unique filename with timestamp
+            const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+            const filename = `merged-pdf-${timestamp}.pdf`;
+
+            const processedCount = sectionPages.size;
+            result.innerHTML = `
+                    <div class="success">
+                        ✅ Successfully merged ${processedCount} PDFs with Table of Contents!
+                        <br><br>
+                        📊 <strong>Total pages:</strong> ${currentPage}
+                        <br>
+                        📑 <strong>Sections:</strong> ${processedCount}
+                        <br><br>
+                        <a href="${url}" download="${filename}" class="download-btn" >
+                            📥 Download Merged PDF
+                        </a>
+                        <br><br>
+                        <small style="color: rgba(255,255,255,0.8);">
+                            File: ${filename}
+                        </small>
+                    </div>
+                `;
+            result.style.display = 'block';
+
+            // Add click handler for download link as backup
+            setTimeout(() => {
+                const downloadLink = document.getElementById('downloadLink');
+                if (downloadLink) {
+                    downloadLink.addEventListener('click', function(e) {
+                        // Fallback download method
+                        try {
+                            const link = document.createElement('a');
+                            link.href = url;
+                            link.download = filename;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                        } catch (downloadError) {
+                            console.error('Download error:', downloadError);
+                            // Ultimate fallback - open in new tab
+                            window.open(url, '_blank');
+                        }
+                    });
+                }
+            }, 100);
+
+        } catch (error) {
+            console.error('Merge Error:', error);
+            result.innerHTML = `
+                    <div class="error">
+                        ❌ <strong>Merge Failed:</strong><br>
+                        ${error.message}
+                        <br><br>
+                        <strong>Troubleshooting tips:</strong><br>
+                        • Check if the PDF is password protected or encrypted<br>
+                        • Try opening the PDF in Adobe Reader and re-saving it<br>
+                        • Some PDFs created by specialized software may not be compatible<br>
+                        • Consider using a different PDF or converting it to a standard format<br>
+                        • Large or complex PDFs may need to be split into smaller files
+                    </div>
+                `;
+            result.style.display = 'block';
+        } finally {
+            mergeBtn.disabled = false;
+            progress.style.display = 'none';
+        }
+    });
+
+    // Initialize UI
+    updateUI();
+</script>
+</body>
+</html>
