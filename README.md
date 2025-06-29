@@ -72,4 +72,4 @@ MIT License - use freely for any purpose.
 
 ---
 
-Tags: pdf-merger pdf-tools table-of-contents javascript pdf-lib web-app client-side browser-tool no-upload privacy-focused single-file drag-and-drop responsive-design offline-capable
+Tags: `pdf-merger` `pdf-tools` `table-of-contents` `javascript` `pdf-lib` `web-app` `client-side` `browser-tool` `no-upload` `privacy-focused` `single-file` `drag-and-drop` `responsive-design` `offline-capable`
