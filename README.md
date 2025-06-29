@@ -24,7 +24,7 @@ A powerful, client-side web application that merges multiple PDF files into a si
 
 ```
 PDF 1 + PDF 2 + PDF 3 → Merged PDF with TOC
- 📄  +  📄  +  📄   →     📚 (with clickable index)
+  📄  +   📄   +  📄   → 📚 (with clickable index)
 ```
 
 1. **Add PDFs**: Upload files or drag & drop multiple PDFs
