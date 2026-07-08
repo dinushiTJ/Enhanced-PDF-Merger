@@ -4,7 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PDF Merger with Table of Contents</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236366f1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M4 19.5A2.5 2.5 0 0 1 6.5 17H20'/><path d='M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z'/></svg>">
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tsparticles-confetti@2.9.3/tsparticles.confetti.bundle.min.js"></script>
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-S8HV3YD8Y9"></script>
     <script>
@@ -23,7 +27,7 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #000000;
             min-height: 100vh;
             padding: 20px;
         }
@@ -39,11 +43,15 @@
         }
 
         h1 {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
             text-align: center;
             color: #333;
             margin-bottom: 30px;
             font-size: 2.5em;
-            background: linear-gradient(45deg, #667eea, #764ba2);
+            background: #000000;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -54,11 +62,13 @@
         }
 
         .add-file-btn {
-            display: inline-block;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
             padding: 12px 24px;
-            background: linear-gradient(45deg, #56ab2f, #a8e6cf);
-            color: white;
-            border: none;
+            background: #d7f0c8;
+            color: #2e7d1f;
+            border: 2px solid #56ab2f;
             border-radius: 50px;
             cursor: pointer;
             transition: all 0.3s ease;
@@ -83,14 +93,14 @@
         }
 
         .pdf-item:hover {
-            border-color: #667eea;
+            border-color: #000000;
             transform: translateY(-2px);
             box-shadow: 0 8px 20px rgba(102, 126, 234, 0.1);
         }
 
         .pdf-item.has-file {
             border-color: #56ab2f;
-            background: linear-gradient(45deg, rgba(86, 171, 47, 0.05), rgba(168, 230, 207, 0.05));
+            background: rgba(86, 171, 47, 0.05);
         }
 
         .pdf-header {
@@ -101,7 +111,7 @@
         }
 
         .pdf-number {
-            background: linear-gradient(45deg, #667eea, #764ba2);
+            background: #000000;
             color: white;
             padding: 8px 16px;
             border-radius: 25px;
@@ -110,7 +120,7 @@
         }
 
         .remove-btn {
-            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            background: #ff6b6b;
             color: white;
             border: none;
             border-radius: 50%;
@@ -151,7 +161,7 @@
 
         .toc-input:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: #000000;
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
 
@@ -163,10 +173,14 @@
         }
 
         .merge-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
             flex: 1;
             min-width: 200px;
             padding: 16px;
-            background: linear-gradient(45deg, #667eea, #764ba2);
+            background: #000000;
             color: white;
             border: none;
             border-radius: 50px;
@@ -188,8 +202,11 @@
         }
 
         .clear-all-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
             padding: 16px 24px;
-            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            background: #ff6b6b;
             color: white;
             border: none;
             border-radius: 50px;
@@ -215,7 +232,7 @@
         }
 
         .success {
-            background: linear-gradient(45deg, #56ab2f, #a8e6cf);
+            background: #56ab2f;
             color: white;
             padding: 20px;
             border-radius: 15px;
@@ -225,8 +242,253 @@
             line-height: 1.6;
         }
 
+        /* ---- Friendly + professional success card ---- */
+        .result-card {
+            position: relative;
+            background: linear-gradient(180deg, #ffffff 0%, #fdfbff 100%);
+            max-width: 580px;
+            margin: 24px auto;
+            padding: 40px 32px 32px;
+            border-radius: 24px;
+            box-shadow: 0 20px 50px rgba(124, 108, 176, 0.18);
+            text-align: center;
+            color: #2c2740;
+            font-family: 'Segoe UI', system-ui, -apple-system, Roboto, Helvetica, Arial, sans-serif;
+            animation: cardRise 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        @keyframes cardRise {
+            0% { transform: translateY(16px); opacity: 0; }
+            100% { transform: translateY(0); opacity: 1; }
+        }
+
+        .result-check {
+            position: relative;
+            width: 84px;
+            height: 84px;
+            margin: 0 auto 22px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #6ee7b7 0%, #34d399 45%, #38bdf8 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 24px rgba(52, 211, 153, 0.4);
+            animation: checkPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes checkPop {
+            0% { transform: scale(0.5); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .spark {
+            position: absolute;
+            border-radius: 50%;
+            background: #fcd34d;
+            opacity: 0.9;
+            animation: sparkFloat 2.4s ease-in-out infinite;
+        }
+        .spark-1 { width: 8px; height: 8px; top: -4px; right: 6px; animation-delay: 0s; }
+        .spark-2 { width: 6px; height: 6px; bottom: 2px; left: -6px; background: #f9a8d4; animation-delay: 0.6s; }
+        .spark-3 { width: 5px; height: 5px; top: 10px; left: -10px; background: #a5b4fc; animation-delay: 1.2s; }
+
+        @keyframes sparkFloat {
+            0%, 100% { transform: translateY(0) scale(1); opacity: 0.5; }
+            50% { transform: translateY(-6px) scale(1.25); opacity: 1; }
+        }
+
+        .result-title {
+            font-size: 26px;
+            font-weight: 700;
+            color: #2c2740;
+            margin-bottom: 8px;
+            letter-spacing: -0.01em;
+        }
+
+        .result-sub {
+            font-size: 15.5px;
+            color: #7a7490;
+            line-height: 1.55;
+            margin-bottom: 26px;
+            max-width: 380px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .metric-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            margin-bottom: 22px;
+        }
+
+        .metric-card {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 18px;
+            border-radius: 18px;
+            text-align: left;
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 24px rgba(124, 108, 176, 0.16);
+        }
+
+        .metric-pages { background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%); }
+        .metric-sections { background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); }
+
+        .metric-emoji {
+            font-size: 28px;
+            line-height: 1;
+        }
+
+        .metric-value {
+            font-size: 26px;
+            font-weight: 700;
+            color: #2c2740;
+            line-height: 1.1;
+        }
+
+        .metric-label {
+            font-size: 13px;
+            font-weight: 500;
+            color: #7a7490;
+            margin-top: 2px;
+        }
+
+        .download-card {
+            background: linear-gradient(135deg, #faf5ff 0%, #eff6ff 100%);
+            border: 1px solid #ede9fe;
+            border-radius: 20px;
+            padding: 18px;
+            margin-bottom: 24px;
+        }
+
+        .download-file {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-align: left;
+            margin-bottom: 16px;
+        }
+
+        .download-file-icon {
+            font-size: 26px;
+            flex-shrink: 0;
+        }
+
+        .download-file-meta {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        .download-file-name {
+            font-size: 14.5px;
+            font-weight: 600;
+            color: #2c2740;
+            word-break: break-all;
+        }
+
+        .download-file-size {
+            font-size: 13px;
+            color: #9691a8;
+            margin-top: 2px;
+        }
+
+        .btn-download {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 50%, #38bdf8 100%);
+            background-size: 160% 160%;
+            color: #ffffff;
+            font-size: 16px;
+            font-weight: 600;
+            text-decoration: none;
+            border-radius: 14px;
+            box-shadow: 0 8px 20px rgba(99, 102, 241, 0.32);
+            transition: transform 0.18s ease, box-shadow 0.18s ease, background-position 0.5s ease;
+        }
+
+        .btn-download:hover {
+            transform: translateY(-2px);
+            background-position: 100% 100%;
+            box-shadow: 0 14px 28px rgba(99, 102, 241, 0.42);
+        }
+
+        .btn-download:active {
+            transform: translateY(0);
+        }
+
+        .preview-block {
+            margin-top: 4px;
+            text-align: left;
+        }
+
+        .preview-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #7a7490;
+            margin-bottom: 10px;
+        }
+
+        .preview-scroll {
+            max-height: 600px;
+            overflow: auto;
+            border: 1px solid #ece8f5;
+            border-radius: 18px;
+            background: linear-gradient(180deg, #f6f4fb 0%, #eef0f6 100%);
+            padding: 16px;
+        }
+
+        @media (max-width: 480px) {
+            .result-card { padding: 28px 18px 22px; border-radius: 20px; }
+            .metric-grid { grid-template-columns: 1fr; }
+            .result-title { font-size: 22px; }
+        }
+
+        /* ---- Icon system ---- */
+        svg { flex-shrink: 0; }
+
+        .icon-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            border-radius: 14px;
+            flex-shrink: 0;
+            transition: transform 0.2s ease;
+        }
+        .metric-card:hover .icon-badge { transform: scale(1.08) rotate(-3deg); }
+
+        .icon-indigo { background: #e0e7ff; color: #6366f1; }
+        .icon-green  { background: #dcfce7; color: #16a34a; }
+        .icon-violet { background: #ede9fe; color: #8b5cf6; }
+        .icon-sky    { background: #e0f2fe; color: #0ea5e9; }
+
+        .preview-title { display: flex; align-items: center; gap: 8px; }
+        .preview-title svg { color: #8b5cf6; }
+        .download-file-size { display: inline-flex; align-items: center; gap: 6px; }
+        .download-file-size svg { color: #a5a0b5; }
+
+        .site-footer {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.85);
+            font-size: 14px;
+            padding: 24px 16px 12px;
+        }
+
         .error {
-            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            background: #ff6b6b;
             color: white;
             padding: 20px;
             border-radius: 15px;
@@ -239,9 +501,10 @@
         .download-btn {
             display: inline-block;
             padding: 14px 28px;
-            background: linear-gradient(45deg, #56ab2f, #a8e6cf);
-            color: white;
+            background: #d7f0c8;
+            color: #2e7d1f;
             text-decoration: none;
+            border: 2px solid #56ab2f;
             border-radius: 50px;
             font-weight: 600;
             margin-top: 15px;
@@ -262,9 +525,10 @@
         }
 
         .empty-state-icon {
-            font-size: 48px;
-            margin-bottom: 20px;
-            opacity: 0.5;
+            margin-bottom: 16px;
+            color: #b8b2cc;
+            display: flex;
+            justify-content: center;
         }
 
         .stats {
@@ -278,7 +542,7 @@
         }
 
         .drag-drop-area {
-            border: 3px dashed #667eea;
+            border: 3px dashed #000000;
             border-radius: 15px;
             padding: 40px 20px;
             text-align: center;
@@ -294,11 +558,17 @@
         }
 
         .drag-drop-text {
-            color: #667eea;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            color: #000000;
             font-size: 18px;
             font-weight: 500;
             margin-bottom: 10px;
         }
+
+        .drag-drop-icon { color: #6366f1; }
 
         .drag-drop-subtext {
             color: #999;
@@ -306,14 +576,17 @@
         }
 
         .move-btn {
-            background: linear-gradient(45deg, #667eea, #764ba2);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: #000000;
             color: white;
             border: none;
             border-radius: 20px;
-            padding: 6px 12px;
+            padding: 6px 9px;
             cursor: pointer;
             font-size: 12px;
-            margin: 0 5px;
+            margin: 0 4px;
             transition: all 0.3s ease;
         }
 
@@ -330,23 +603,23 @@
 </head>
 <body>
 <div class="container">
-    <h1>📚 Enhanced PDF Merger</h1>
+    <h1><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>Enhanced PDF Merger</h1>
 
     <div class="stats" id="stats">
         <span id="file-count">0</span> PDFs ready to merge
     </div>
 
     <div class="drag-drop-area" id="dragDropArea">
-        <div class="drag-drop-text">📎 Drag & Drop PDF files here</div>
+        <div class="drag-drop-text"><svg class="drag-drop-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 13v8"/><path d="m8 17 4-4 4 4"/><path d="M20 16.58A5 5 0 0 0 18 7h-1.26A8 8 0 1 0 4 15.25"/></svg>Drag &amp; Drop PDF files here</div>
         <div class="drag-drop-subtext">or click "Add PDF File" below</div>
     </div>
 
     <div class="upload-section">
-        <button id="addFileBtn" class="add-file-btn">+ Add PDF File</button>
+        <button id="addFileBtn" class="add-file-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>Add PDF File</button>
 
         <div id="pdfContainer">
             <div class="empty-state" id="emptyState">
-                <div class="empty-state-icon">📄</div>
+                <div class="empty-state-icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg></div>
                 <div>No PDF files added yet</div>
                 <div style="font-size: 14px; margin-top: 10px; color: #999;">
                     Click "Add PDF File" or drag & drop files to get started
@@ -356,16 +629,26 @@
     </div>
 
     <div class="controls">
-        <button id="mergeBtn" class="merge-btn" disabled>🔗 Merge PDFs & Create TOC</button>
-        <button id="clearAllBtn" class="clear-all-btn" style="display: none;">🗑️ Clear All</button>
+        <button id="mergeBtn" class="merge-btn" disabled><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Merge PDFs &amp; Create TOC</button>
+        <button id="clearAllBtn" class="clear-all-btn" style="display: none;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>Clear All</button>
     </div>
 
     <div id="progress" class="progress" style="display: none;"></div>
     <div id="result" style="display: none;"></div>
 </div>
 
+<footer class="site-footer">
+    <p>© <span id="year"></span> PDF Merger Tool. All rights reserved.</p>
+</footer>
+
 <script>
     const { PDFDocument, rgb, StandardFonts } = PDFLib;
+
+    // Configure PDF.js worker for the inline preview
+    if (window.pdfjsLib) {
+        pdfjsLib.GlobalWorkerOptions.workerSrc =
+            'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
 
     let pdfFiles = new Map();
     let fileCounter = 0;
@@ -377,6 +660,9 @@
     const mergeBtn = document.getElementById('mergeBtn');
     const clearAllBtn = document.getElementById('clearAllBtn');
     const fileCountSpan = document.getElementById('file-count');
+
+    // Footer year
+    document.getElementById('year').textContent = new Date().getFullYear();
 
     // Drag and drop functionality
     dragDropArea.addEventListener('dragover', (e) => {
@@ -439,7 +725,8 @@
 
         pdfFiles.set(fileId, {
             file: file,
-            title: `Section ${fileCounter}`,
+            title: '',      // TOC title (empty = placeholder only; numbering is added automatically)
+            pageTitle: '',  // printed on the section's first page (empty = none)
             order: fileCounter
         });
 
@@ -456,17 +743,20 @@
                 <div class="pdf-header">
                     <span class="pdf-number">PDF ${pdfFiles.get(fileId).order}</span>
                     <div>
-                        <button class="move-btn" onclick="moveFile('${fileId}', 'up')" ${pdfFiles.get(fileId).order === 1 ? 'disabled' : ''}>↑</button>
-                        <button class="move-btn" onclick="moveFile('${fileId}', 'down')" ${pdfFiles.get(fileId).order === pdfFiles.size ? 'disabled' : ''}>↓</button>
+                        <button class="move-btn" onclick="moveFile('${fileId}', 'up')" ${pdfFiles.get(fileId).order === 1 ? 'disabled' : ''}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg></button>
+                        <button class="move-btn" onclick="moveFile('${fileId}', 'down')" ${pdfFiles.get(fileId).order === pdfFiles.size ? 'disabled' : ''}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
                         <button class="remove-btn" onclick="removePdfFile('${fileId}')">&times;</button>
                     </div>
                 </div>
                 <div class="file-input-wrapper">
-                    <span class="file-name">📄 ${fileName}</span>
+                    <span class="file-name"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>${fileName}</span>
                 </div>
-                <input type="text" class="toc-input" placeholder="Enter title for table of contents"
+                <input type="text" class="toc-input" placeholder="Title for table of contents"
                        value="${pdfFiles.get(fileId).title}"
                        onchange="updateTitle('${fileId}', this.value)">
+                <input type="text" class="toc-input" placeholder="Title shown on the section's first page"
+                       value="${pdfFiles.get(fileId).pageTitle}"
+                       onchange="updatePageTitle('${fileId}', this.value)">
             `;
 
         pdfContainer.appendChild(pdfItem);
@@ -527,7 +817,53 @@
 
     function updateTitle(fileId, title) {
         if (pdfFiles.has(fileId)) {
-            pdfFiles.get(fileId).title = title || `Section ${pdfFiles.get(fileId).order}`;
+            pdfFiles.get(fileId).title = title; // empty allowed; numbering is added automatically in the TOC
+        }
+    }
+
+    // Human-readable file size.
+    function formatBytes(bytes) {
+        if (!bytes && bytes !== 0) return '—';
+        if (bytes < 1024) return bytes + ' B';
+        const units = ['KB', 'MB', 'GB'];
+        let i = -1, n = bytes;
+        do { n /= 1024; i++; } while (n >= 1024 && i < units.length - 1);
+        return n.toFixed(1) + ' ' + units[i];
+    }
+
+    // Greedily wrap text into lines that fit within maxWidth at the given font size.
+    function wrapText(text, font, size, maxWidth) {
+        const words = text.split(/\s+/).filter(Boolean);
+        const lines = [];
+        let line = '';
+
+        const fits = (s) => font.widthOfTextAtSize(s, size) <= maxWidth;
+
+        for (let word of words) {
+            // Hard-split a single word that is too long on its own.
+            while (!fits(word) && word.length > 1) {
+                let cut = word.length;
+                while (cut > 1 && !fits(word.slice(0, cut))) cut--;
+                const head = word.slice(0, cut);
+                if (line) { lines.push(line); line = ''; }
+                lines.push(head);
+                word = word.slice(cut);
+            }
+            const candidate = line ? `${line} ${word}` : word;
+            if (fits(candidate)) {
+                line = candidate;
+            } else {
+                if (line) lines.push(line);
+                line = word;
+            }
+        }
+        if (line) lines.push(line);
+        return lines.length ? lines : [''];
+    }
+
+    function updatePageTitle(fileId, pageTitle) {
+        if (pdfFiles.has(fileId)) {
+            pdfFiles.get(fileId).pageTitle = pageTitle; // empty allowed = no page title
         }
     }
 
@@ -562,14 +898,14 @@
         const progress = document.getElementById('progress');
         const result = document.getElementById('result');
 
-        // 🔁 Clear previous output in case of re-merge
+        // Clear previous output in case of re-merge
         result.innerHTML = '';
         result.style.display = 'none';
         progress.innerHTML = '';
         progress.style.display = 'block';
 
         if (pdfFiles.size === 0) {
-            result.innerHTML = '<div class="error">❌ Please add at least one PDF file.</div>';
+            result.innerHTML = '<div class="error"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-4px;margin-right:6px"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>Please add at least one PDF file.</div>';
             result.style.display = 'block';
             return;
         }
@@ -680,6 +1016,23 @@
                             const [copiedPage] = await mergedPdf.copyPages(pdf, [pageIndex]);
                             mergedPdf.addPage(copiedPage);
                             currentPage++;
+
+                            // Draw the page title on the section's first page (overlay, no new page)
+                            if (pageIndex === 0 && fileData.pageTitle && fileData.pageTitle.trim()) {
+                                const { width: pw, height: ph } = copiedPage.getSize();
+                                const t = fileData.pageTitle.trim();
+                                const size = 16;
+                                const tw = boldFont.widthOfTextAtSize(t, size);
+                                copiedPage.drawRectangle({
+                                    x: 30, y: ph - 46,
+                                    width: Math.min(tw + 20, pw - 60), height: 26,
+                                    color: rgb(1, 1, 1), opacity: 0.75
+                                });
+                                copiedPage.drawText(t, {
+                                    x: 40, y: ph - 40, size,
+                                    font: boldFont, color: rgb(0.15, 0.15, 0.15)
+                                });
+                            }
                         } catch (pageError) {
                             console.warn(`Failed to copy page ${pageIndex + 1} from ${fileData.file.name}:`, pageError);
                             // Continue with next page instead of failing completely
@@ -729,16 +1082,23 @@
             progress.textContent = 'Adding entries to Table of Contents...';
 
             // Add TOC entries
+            const entryFontSize = 14;
+            const lineHeight = 18;      // vertical step between wrapped lines
+            const entryGap = 12;        // extra space between entries
+            const titleX = 70;
+            const pageNumRight = width - 60; // right edge that page numbers align to
+            const maxTitleWidth = pageNumRight - titleX - 30; // reserve room for leaders + page number
             let yPosition = height - 140;
-            const entriesPerPage = Math.floor((height - 160) / 25);
             let currentTocPage = tocPage;
-            let entryCount = 0;
 
             for (const [fileId, fileData] of sortedFiles) {
                 if (!sectionPages.has(fileId)) continue;
 
-                // Create new TOC page if needed
-                if (entryCount > 0 && entryCount % entriesPerPage === 0) {
+                const title = `${fileData.order}. ${fileData.title || ''}`.trim();
+                const lines = wrapText(title, font, entryFontSize, maxTitleWidth);
+
+                // Create a new TOC page if this entry would overflow the current one
+                if (yPosition - (lines.length * lineHeight) < 80) {
                     currentTocPage = mergedPdf.addPage([612, 792]);
                     yPosition = height - 80;
                     currentPage++;
@@ -749,37 +1109,57 @@
                     }
                 }
 
-                const title = `${fileData.order}. ${fileData.title}`;
                 const pageNum = sectionPages.get(fileId);
                 const destinationPageIndex = pageNum - 1;
 
-                const titleTextWidth = font.widthOfTextAtSize(title, 14);
-                const pageText = `Page ${pageNum}`;
-                const pageTextWidth = font.widthOfTextAtSize(pageText, 14);
+                // Draw each wrapped line of the title
+                let lineY = yPosition;
+                for (const line of lines) {
+                    currentTocPage.drawText(line, {
+                        x: titleX,
+                        y: lineY,
+                        size: entryFontSize,
+                        font: font,
+                        color: rgb(0, 0, 0)
+                    });
+                    lineY -= lineHeight;
+                }
 
-                // Draw the text in black
-                currentTocPage.drawText(title, {
-                    x: 70,
-                    y: yPosition,
-                    size: 14,
+                // Book-style layout: page number right-aligned, dot leaders on the last title line
+                const lastLineBaseline = yPosition - (lines.length - 1) * lineHeight;
+                const pageStr = String(pageNum);
+                const pageStrWidth = font.widthOfTextAtSize(pageStr, entryFontSize);
+                const pageNumX = pageNumRight - pageStrWidth;
+
+                const lastLine = lines[lines.length - 1];
+                const leaderStart = titleX + font.widthOfTextAtSize(lastLine, entryFontSize) + 4;
+                const leaderEnd = pageNumX - 4;
+                const dotW = font.widthOfTextAtSize('.', entryFontSize);
+                const dotCount = Math.max(0, Math.floor((leaderEnd - leaderStart) / dotW));
+                if (dotCount > 0) {
+                    currentTocPage.drawText('.'.repeat(dotCount), {
+                        x: leaderStart,
+                        y: lastLineBaseline,
+                        size: entryFontSize,
+                        font: font,
+                        color: rgb(0.4, 0.4, 0.4)
+                    });
+                }
+
+                currentTocPage.drawText(pageStr, {
+                    x: pageNumX,
+                    y: lastLineBaseline,
+                    size: entryFontSize,
                     font: font,
                     color: rgb(0, 0, 0)
                 });
 
-                currentTocPage.drawText(pageText, {
-                    x: width - 120,
-                    y: yPosition,
-                    size: 14,
-                    font: font,
-                    color: rgb(0, 0, 0)
-                });
-
-                // Add clickable link annotation to the TOC entry
+                // Clickable link covering the whole (possibly wrapped) entry
                 const destinationPage = mergedPdf.getPage(destinationPageIndex);
                 const linkAnnotation = mergedPdf.context.obj({
                     Type: 'Annot',
                     Subtype: 'Link',
-                    Rect: [70, yPosition, 70 + titleTextWidth, yPosition + 16],
+                    Rect: [titleX, lastLineBaseline - 2, width - 60, yPosition + 16],
                     Border: [0, 0, 0],
                     A: {
                         Type: 'Action',
@@ -798,8 +1178,7 @@
                     );
                 }
 
-                yPosition -= 30; // reduced spacing
-                entryCount++;
+                yPosition -= (lines.length * lineHeight) + entryGap;
             }
 
             progress.textContent = 'Generating final PDF file...';
@@ -821,23 +1200,101 @@
 
             const processedCount = sectionPages.size;
             result.innerHTML = `
-                    <div class="success">
-                        ✅ Successfully merged ${processedCount} PDFs with Table of Contents!
-                        <br><br>
-                        📊 <strong>Total pages:</strong> ${currentPage}
-                        <br>
-                        📑 <strong>Sections:</strong> ${processedCount}
-                        <br><br>
-                        <a href="${url}" download="${filename}" class="download-btn" >
-                            📥 Download Merged PDF
-                        </a>
-                        <br><br>
-                        <small style="color: rgba(255,255,255,0.8);">
-                            File: ${filename}
-                        </small>
+                    <div class="result-card">
+                        <div class="result-check">
+                            <svg viewBox="0 0 24 24" width="38" height="38" fill="none"
+                                 stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M20 6 9 17l-5-5"/>
+                            </svg>
+                            <span class="spark spark-1"></span>
+                            <span class="spark spark-2"></span>
+                            <span class="spark spark-3"></span>
+                        </div>
+                        <h2 class="result-title">Your PDF is Ready!</h2>
+                        <p class="result-sub">Your documents have been successfully merged into one file.</p>
+
+                        <div class="metric-grid">
+                            <div class="metric-card metric-pages">
+                                <span class="icon-badge icon-indigo">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>
+                                </span>
+                                <div class="metric-text">
+                                    <div class="metric-value">${currentPage}</div>
+                                    <div class="metric-label">Total Pages</div>
+                                </div>
+                            </div>
+                            <div class="metric-card metric-sections">
+                                <span class="icon-badge icon-green">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="M2 12.5l8.58 3.91a2 2 0 0 0 1.66 0L20.83 12.5"/><path d="M2 17l8.58 3.91a2 2 0 0 0 1.66 0L20.83 17"/></svg>
+                                </span>
+                                <div class="metric-text">
+                                    <div class="metric-value">${processedCount}</div>
+                                    <div class="metric-label">Sections</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="download-card">
+                            <div class="download-file">
+                                <span class="icon-badge icon-violet download-file-icon">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+                                </span>
+                                <div class="download-file-meta">
+                                    <span class="download-file-name">${filename}</span>
+                                    <span class="download-file-size">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                                        ${formatBytes(blob.size)} · ${new Date().toLocaleDateString()}
+                                    </span>
+                                </div>
+                            </div>
+                            <a href="${url}" download="${filename}" class="btn-download">
+                                <svg viewBox="0 0 24 24" width="20" height="20" fill="none"
+                                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                    <path d="M7 10l5 5 5-5"/>
+                                    <path d="M12 15V3"/>
+                                </svg>
+                                Download Merged PDF
+                            </a>
+                        </div>
+
+                        <div class="preview-block">
+                            <div class="preview-title"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>PDF Preview</div>
+                            <div id="pdfPreview" class="preview-scroll"></div>
+                        </div>
                     </div>
                 `;
             result.style.display = 'block';
+
+            // Celebrate a successful merge (once, only after the success UI is on screen).
+            if (typeof confetti === 'function') {
+                confetti({
+                    particleCount: 100,
+                    spread: 70,
+                    origin: { y: 0.6 },
+                });
+            }
+
+            // Render an inline preview with PDF.js (works from file://; the browser's own PDF
+            // viewer refuses blob:null / data: PDFs inside an iframe).
+            try {
+                const previewDoc = await pdfjsLib.getDocument({ data: pdfBytes.slice(0) }).promise;
+                const container = document.getElementById('pdfPreview');
+                for (let p = 1; p <= previewDoc.numPages; p++) {
+                    const page = await previewDoc.getPage(p);
+                    const viewport = page.getViewport({ scale: 1.2 });
+                    const canvas = document.createElement('canvas');
+                    canvas.width = viewport.width;
+                    canvas.height = viewport.height;
+                    canvas.style.cssText = 'width:100%; height:auto; display:block; margin:0 auto 14px; background:#fff; border-radius:4px; box-shadow:0 2px 10px rgba(0,0,0,0.15);';
+                    container.appendChild(canvas);
+                    await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+                }
+            } catch (previewErr) {
+                console.warn('Preview render failed:', previewErr);
+                const c = document.getElementById('pdfPreview');
+                if (c) c.innerHTML = '<div style="color:#333; padding:20px;">Preview unavailable — use Download to view.</div>';
+            }
 
             // Add click handler for download link as backup
             setTimeout(() => {
@@ -865,7 +1322,7 @@
             console.error('Merge Error:', error);
             result.innerHTML = `
                     <div class="error">
-                        ❌ <strong>Merge Failed:</strong><br>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-4px;margin-right:6px"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg><strong>Merge Failed:</strong><br>
                         ${error.message}
                         <br><br>
                         <strong>Troubleshooting tips:</strong><br>
