@@ -88,8 +88,9 @@
             border-radius: 15px;
             padding: 20px;
             margin-bottom: 15px;
-            transition: all 0.3s ease;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
             position: relative;
+            will-change: transform;
         }
 
         .pdf-item:hover {
@@ -104,7 +105,17 @@
         }
 
         .pdf-item.dragging {
-            opacity: 0.4;
+            transform: scale(1.02);
+            transition: none;
+            background: #fdeaea;
+            border-color: #e74c3c;
+            opacity: 1;
+        }
+
+        /* Drop indicators are instant feedback — no transition lag */
+        .pdf-item.drag-over-top,
+        .pdf-item.drag-over-bottom {
+            transition: none;
         }
 
         .pdf-item.drag-over-top {
@@ -113,6 +124,13 @@
 
         .pdf-item.drag-over-bottom {
             box-shadow: inset 0 -4px 0 -1px #6366f1;
+        }
+
+        /* Highlight a card right after it has been moved/reordered. */
+        .pdf-item.just-moved {
+            border-color: #f1c40f;
+            background: #fff8dc;
+            box-shadow: 0 0 0 3px rgba(241, 196, 15, 0.35);
         }
 
         .drag-handle {
@@ -684,6 +702,51 @@
     let fileCounter = 0;
     let draggedId = null;
 
+    // Smooth, constant-speed auto-scroll while dragging a card near the
+    // viewport edges — replaces the browser's jumpy native drag auto-scroll.
+    const AUTO_SCROLL_EDGE = 90;   // px zone at top/bottom that triggers scroll
+    const AUTO_SCROLL_MAX = 14;    // max px per frame
+    let autoScrollSpeed = 0;
+    let autoScrollRAF = null;
+
+    function autoScrollStep() {
+        if (autoScrollSpeed !== 0) {
+            window.scrollBy(0, autoScrollSpeed);
+            autoScrollRAF = requestAnimationFrame(autoScrollStep);
+        } else {
+            autoScrollRAF = null;
+        }
+    }
+
+    function updateAutoScroll(clientY) {
+        const h = window.innerHeight;
+        if (clientY < AUTO_SCROLL_EDGE) {
+            const ratio = (AUTO_SCROLL_EDGE - clientY) / AUTO_SCROLL_EDGE;
+            autoScrollSpeed = -Math.ceil(ratio * AUTO_SCROLL_MAX);
+        } else if (clientY > h - AUTO_SCROLL_EDGE) {
+            const ratio = (clientY - (h - AUTO_SCROLL_EDGE)) / AUTO_SCROLL_EDGE;
+            autoScrollSpeed = Math.ceil(ratio * AUTO_SCROLL_MAX);
+        } else {
+            autoScrollSpeed = 0;
+        }
+        if (autoScrollSpeed !== 0 && autoScrollRAF === null) {
+            autoScrollRAF = requestAnimationFrame(autoScrollStep);
+        }
+    }
+
+    function stopAutoScroll() {
+        autoScrollSpeed = 0;
+        if (autoScrollRAF !== null) {
+            cancelAnimationFrame(autoScrollRAF);
+            autoScrollRAF = null;
+        }
+    }
+
+    // Feed the pointer position to the custom auto-scroller during any drag.
+    document.addEventListener('dragover', (e) => {
+        if (draggedId) updateAutoScroll(e.clientY);
+    });
+
     const dragDropArea = document.getElementById('dragDropArea');
     const pdfContainer = document.getElementById('pdfContainer');
     const emptyState = document.getElementById('emptyState');
@@ -767,7 +830,7 @@
 
     function createPdfItem(fileId, fileName) {
         const pdfItem = document.createElement('div');
-        pdfItem.className = 'pdf-item has-file';
+        pdfItem.className = 'pdf-item has-file' + (movedFiles.has(fileId) ? ' just-moved' : '');
         pdfItem.id = fileId;
 
         pdfItem.innerHTML = `
@@ -821,6 +884,7 @@
         pdfItem.addEventListener('drop', (e) => {
             e.preventDefault();
             pdfItem.classList.remove('drag-over-top', 'drag-over-bottom');
+            stopAutoScroll();
             if (!draggedId || draggedId === fileId) return;
             const rect = pdfItem.getBoundingClientRect();
             const below = e.clientY > rect.top + rect.height / 2;
@@ -833,6 +897,7 @@
             pdfItem.draggable = false;
             pdfItem.classList.remove('dragging');
             draggedId = null;
+            stopAutoScroll();
         });
 
         pdfContainer.appendChild(pdfItem);
@@ -860,6 +925,7 @@
 
             // Rebuild the UI
             rebuildPdfList();
+            highlightMoved(fileId);
         }
     }
 
@@ -882,6 +948,15 @@
 
         sorted.forEach((id, i) => { pdfFiles.get(id).order = i + 1; });
         rebuildPdfList();
+        highlightMoved(fileId);
+    }
+
+    // Flag a card as moved so it stays highlighted until the next merge.
+    const movedFiles = new Set();
+    function highlightMoved(fileId) {
+        movedFiles.add(fileId);
+        const el = document.getElementById(fileId);
+        if (el) el.classList.add('just-moved');
     }
 
     function rebuildPdfList() {
@@ -966,6 +1041,7 @@
 
     function clearAllFiles() {
         pdfFiles.clear();
+        movedFiles.clear();
         pdfContainer.innerHTML = '';
         fileCounter = 0;
         updateUI();
@@ -994,6 +1070,11 @@
     mergeBtn.addEventListener('click', async function() {
         const progress = document.getElementById('progress');
         const result = document.getElementById('result');
+
+        // Merge clears the "moved" highlight on all cards.
+        movedFiles.clear();
+        pdfContainer.querySelectorAll('.pdf-item.just-moved')
+            .forEach(el => el.classList.remove('just-moved'));
 
         // Clear previous output in case of re-merge
         result.innerHTML = '';
