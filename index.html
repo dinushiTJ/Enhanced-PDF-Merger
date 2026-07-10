@@ -103,6 +103,36 @@
             background: rgba(86, 171, 47, 0.05);
         }
 
+        .pdf-item.dragging {
+            opacity: 0.4;
+        }
+
+        .pdf-item.drag-over-top {
+            box-shadow: inset 0 4px 0 -1px #6366f1;
+        }
+
+        .pdf-item.drag-over-bottom {
+            box-shadow: inset 0 -4px 0 -1px #6366f1;
+        }
+
+        .drag-handle {
+            cursor: grab;
+            color: #9aa0a6;
+            display: inline-flex;
+            align-items: center;
+            padding: 4px;
+            margin-right: 8px;
+            touch-action: none;
+        }
+
+        .drag-handle:hover {
+            color: #6366f1;
+        }
+
+        .drag-handle:active {
+            cursor: grabbing;
+        }
+
         .pdf-header {
             display: flex;
             justify-content: space-between;
@@ -652,6 +682,7 @@
 
     let pdfFiles = new Map();
     let fileCounter = 0;
+    let draggedId = null;
 
     const dragDropArea = document.getElementById('dragDropArea');
     const pdfContainer = document.getElementById('pdfContainer');
@@ -741,7 +772,10 @@
 
         pdfItem.innerHTML = `
                 <div class="pdf-header">
-                    <span class="pdf-number">PDF ${pdfFiles.get(fileId).order}</span>
+                    <div style="display:flex;align-items:center">
+                        <span class="drag-handle" title="Drag to reorder"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg></span>
+                        <span class="pdf-number">PDF ${pdfFiles.get(fileId).order}</span>
+                    </div>
                     <div>
                         <button class="move-btn" onclick="moveFile('${fileId}', 'up')" ${pdfFiles.get(fileId).order === 1 ? 'disabled' : ''}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg></button>
                         <button class="move-btn" onclick="moveFile('${fileId}', 'down')" ${pdfFiles.get(fileId).order === pdfFiles.size ? 'disabled' : ''}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
@@ -758,6 +792,48 @@
                        value="${pdfFiles.get(fileId).pageTitle}"
                        onchange="updatePageTitle('${fileId}', this.value)">
             `;
+
+        // Handle-only dragging: keep the card non-draggable so the text
+        // inputs stay selectable, and only enable it while the grip is held.
+        const handle = pdfItem.querySelector('.drag-handle');
+        handle.addEventListener('mousedown', () => { pdfItem.draggable = true; });
+        handle.addEventListener('mouseup', () => { pdfItem.draggable = false; });
+
+        pdfItem.addEventListener('dragstart', (e) => {
+            draggedId = fileId;
+            pdfItem.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+        });
+
+        pdfItem.addEventListener('dragover', (e) => {
+            if (!draggedId || draggedId === fileId) return;
+            e.preventDefault();
+            const rect = pdfItem.getBoundingClientRect();
+            const below = e.clientY > rect.top + rect.height / 2;
+            pdfItem.classList.toggle('drag-over-bottom', below);
+            pdfItem.classList.toggle('drag-over-top', !below);
+        });
+
+        pdfItem.addEventListener('dragleave', () => {
+            pdfItem.classList.remove('drag-over-top', 'drag-over-bottom');
+        });
+
+        pdfItem.addEventListener('drop', (e) => {
+            e.preventDefault();
+            pdfItem.classList.remove('drag-over-top', 'drag-over-bottom');
+            if (!draggedId || draggedId === fileId) return;
+            const rect = pdfItem.getBoundingClientRect();
+            const below = e.clientY > rect.top + rect.height / 2;
+            let targetOrder = pdfFiles.get(fileId).order;
+            if (below) targetOrder += 1;
+            reorderFile(draggedId, targetOrder);
+        });
+
+        pdfItem.addEventListener('dragend', () => {
+            pdfItem.draggable = false;
+            pdfItem.classList.remove('dragging');
+            draggedId = null;
+        });
 
         pdfContainer.appendChild(pdfItem);
     }
@@ -785,6 +861,27 @@
             // Rebuild the UI
             rebuildPdfList();
         }
+    }
+
+    // Move a file to an arbitrary position. targetOrder is the desired 1-based
+    // slot in the current ordering (before removal of the dragged item).
+    function reorderFile(fileId, targetOrder) {
+        const sorted = Array.from(pdfFiles.entries())
+            .sort((a, b) => a[1].order - b[1].order)
+            .map(([id]) => id);
+
+        const from = sorted.indexOf(fileId);
+        if (from === -1) return;
+
+        // Insertion index among the remaining items after removing the dragged one.
+        let to = targetOrder - 1;
+        if (from < to) to -= 1;
+
+        sorted.splice(from, 1);
+        sorted.splice(to, 0, fileId);
+
+        sorted.forEach((id, i) => { pdfFiles.get(id).order = i + 1; });
+        rebuildPdfList();
     }
 
     function rebuildPdfList() {
