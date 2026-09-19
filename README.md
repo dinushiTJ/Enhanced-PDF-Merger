@@ -6,8 +6,8 @@ A powerful, client-side web application that merges multiple PDF files into a si
 ## Features
 * ✨ **No installation required** - just open and use
 * 📁 **Multiple input methods** - upload files, drag & drop, or select multiple PDFs
-* 📚 **Book-style table of contents** - clickable TOC with dotted leaders, right-aligned page numbers, and long titles that wrap neatly
-* 🏷️ **Two titles per PDF** - one for the table of contents and one printed on the section's first page
+* 📚 **Optional book-style table of contents** - toggle the clickable TOC on or off; dotted leaders, right-aligned page numbers, and long titles wrap neatly
+* 🏷️ **Clear section titles** - TOC titles default to the filename, while optional page titles are printed on each section's first page
 * 🔄 **Reorder PDFs** - move files up/down to arrange merge order
 * 👀 **Live rendered preview** - see the actual merged PDF (rendered with PDF.js) right after merging
 * 🎉 **Delightful success screen** - summary metric cards, file details, one-click download, and a confetti celebration
@@ -19,9 +19,10 @@ A powerful, client-side web application that merges multiple PDF files into a si
 ## Quick Start
 1. Open `index.html` in any web browser
 2. Add PDF files by clicking "Add PDF File" or drag & drop
-3. Customize the TOC title and page title for each section
-4. Click "Merge PDFs & Create TOC" to generate the combined document
-5. Preview the result inline, then download it
+3. Choose whether to include the table of contents
+4. Customize the TOC title and optional page title for each section
+5. Click "Merge PDFs" to generate the combined document
+6. Preview the result inline, then download it
 
 ## Usage
 

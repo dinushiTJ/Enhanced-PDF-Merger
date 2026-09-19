@@ -9,6 +9,7 @@ if (window.pdfjsLib) {
 let pdfFiles = new Map();
 let fileCounter = 0;
 let draggedId = null;
+let includeToc = true;
 
 // Smooth, constant-speed auto-scroll while dragging a card near the
 // viewport edges — replaces the browser's jumpy native drag auto-scroll.
@@ -62,6 +63,7 @@ const addFileBtn = document.getElementById('addFileBtn');
 const mergeBtn = document.getElementById('mergeBtn');
 const clearAllBtn = document.getElementById('clearAllBtn');
 const fileCountSpan = document.getElementById('file-count');
+const tocToggle = document.getElementById('tocToggle');
 
 // Footer year
 document.getElementById('year').textContent = new Date().getFullYear();
@@ -105,6 +107,14 @@ clearAllBtn.addEventListener('click', () => {
     }
 });
 
+tocToggle.addEventListener('change', () => {
+    includeToc = tocToggle.checked;
+    // Once a result exists, keep the download and preview in sync immediately.
+    if (document.getElementById('result').style.display === 'block') {
+        mergePdfs();
+    }
+});
+
 function addPdfFile(file) {
     if (file.type !== 'application/pdf') {
         alert('Please select only PDF files.');
@@ -127,7 +137,7 @@ function addPdfFile(file) {
 
     pdfFiles.set(fileId, {
         file: file,
-        title: '',      // TOC title (empty = placeholder only; numbering is added automatically)
+        title: file.name.replace(/\.pdf$/i, ''), // TOC title; defaults to the filename
         pageTitle: '',  // printed on the section's first page (empty = none)
         order: fileCounter,
         // Security state: 'checking' | 'none' (not encrypted) | 'unlocked' (decryptable)
@@ -301,12 +311,19 @@ function createPdfItem(fileId, fileName) {
                 <span class="file-name"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>${fileName}</span>
             </div>
             <div class="lock-area">${lockAreaHTML(fileId)}</div>
-            <input type="text" class="toc-input" placeholder="Title for table of contents"
-                   value="${pdfFiles.get(fileId).title}"
-                   onchange="updateTitle('${fileId}', this.value)">
-            <input type="text" class="toc-input" placeholder="Title shown on the section's first page"
-                   value="${pdfFiles.get(fileId).pageTitle}"
-                   onchange="updatePageTitle('${fileId}', this.value)">
+            <div class="title-field">
+                <label for="${fileId}-toc-title">Table of Contents title</label>
+                <small>Appears as the clickable entry in the TOC.</small>
+                <input id="${fileId}-toc-title" type="text" class="toc-input" value="${pdfFiles.get(fileId).title}"
+                       onchange="updateTitle('${fileId}', this.value)">
+            </div>
+            <div class="title-field">
+                <label for="${fileId}-page-title">Section page title <span>(optional)</span></label>
+                <small>Printed at the top of this PDF section's first page.</small>
+                <input id="${fileId}-page-title" type="text" class="toc-input" value="${pdfFiles.get(fileId).pageTitle}"
+                       placeholder="Leave blank to hide"
+                       onchange="updatePageTitle('${fileId}', this.value)">
+            </div>
         `;
 
     // Handle-only dragging: keep the card non-draggable so the text
@@ -525,7 +542,7 @@ function updateUI() {
     }
 }
 
-mergeBtn.addEventListener('click', async function() {
+async function mergePdfs() {
     const progress = document.getElementById('progress');
     const result = document.getElementById('result');
 
@@ -547,6 +564,7 @@ mergeBtn.addEventListener('click', async function() {
     }
 
     mergeBtn.disabled = true;
+    tocToggle.disabled = true;
     progress.style.display = 'block';
     progress.textContent = 'Starting PDF merge process...';
     result.style.display = 'none';
@@ -570,22 +588,21 @@ mergeBtn.addEventListener('click', async function() {
         const sectionPages = new Map();
         const sortedFiles = Array.from(pdfFiles.entries()).sort((a, b) => a[1].order - b[1].order);
 
-        progress.textContent = 'Creating Table of Contents...';
-
-        // Create TOC page
-        const tocPage = mergedPdf.addPage([612, 792]);
-        const { width, height } = tocPage.getSize();
-
-        // TOC Title
-        tocPage.drawText('Table of Contents', {
-            x: 50,
-            y: height - 80,
-            size: 24,
-            font: boldFont,
-            color: rgb(0.2, 0.2, 0.2)
-        });
-
-        currentPage = 1; // TOC is page 1
+        let tocPage;
+        let width = 612;
+        let height = 792;
+        if (includeToc) {
+            progress.textContent = 'Creating Table of Contents...';
+            tocPage = mergedPdf.addPage([width, height]);
+            tocPage.drawText('Table of Contents', {
+                x: 50,
+                y: height - 80,
+                size: 24,
+                font: boldFont,
+                color: rgb(0.2, 0.2, 0.2)
+            });
+            currentPage = 1; // TOC is page 1
+        }
 
         // Process each PDF with enhanced error handling
         for (let i = 0; i < sortedFiles.length; i++) {
@@ -718,11 +735,12 @@ mergeBtn.addEventListener('click', async function() {
             }
         }
 
-        if (currentPage <= 1) {
+        if (currentPage <= (includeToc ? 1 : 0)) {
             throw new Error('No pages were successfully processed from the PDF files.');
         }
 
-        progress.textContent = 'Adding entries to Table of Contents...';
+        if (includeToc) {
+            progress.textContent = 'Adding entries to Table of Contents...';
 
         // Add TOC entries
         const entryFontSize = 14;
@@ -823,6 +841,7 @@ mergeBtn.addEventListener('click', async function() {
 
             yPosition -= (lines.length * lineHeight) + entryGap;
         }
+        }
 
         progress.textContent = 'Generating final PDF file...';
 
@@ -854,7 +873,7 @@ mergeBtn.addEventListener('click', async function() {
                         <span class="spark spark-3"></span>
                     </div>
                     <h2 class="result-title">Your PDF is Ready!</h2>
-                    <p class="result-sub">Your documents have been successfully merged into one file.</p>
+                    <p class="result-sub">Your documents have been successfully merged into one file${includeToc ? ' with a clickable table of contents' : ''}.</p>
 
                     <div class="metric-grid">
                         <div class="metric-card metric-pages">
@@ -980,8 +999,11 @@ mergeBtn.addEventListener('click', async function() {
     } finally {
         updateUI(); // re-enables merge unless a file still needs unlocking
         progress.style.display = 'none';
+        tocToggle.disabled = false;
     }
-});
+}
+
+mergeBtn.addEventListener('click', mergePdfs);
 
 // Initialize UI
 updateUI();
