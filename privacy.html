@@ -50,8 +50,8 @@
         <section class="content-section" aria-labelledby="hosting-title">
             <p class="eyebrow">Deployment</p>
             <h2 id="hosting-title">Static hosting security</h2>
-            <p>This project is hosted as a static GitHub Pages site. The pages include a Content Security Policy and referrer policy in their HTML, but GitHub Pages does not provide this project with custom HTTP response headers such as HSTS, X-Frame-Options, or X-Content-Type-Options.</p>
-            <p>For stronger production guarantees, deploy the same static files behind a host or reverse proxy that supports security response headers.</p>
+            <p>This project is hosted as a static GitHub Pages site. The pages include a Content Security Policy and referrer policy in their HTML, and the current GitHub Pages deployment supplies HTTPS and HSTS. This project cannot configure additional response headers such as X-Frame-Options or X-Content-Type-Options.</p>
+            <p>For stronger, fully configurable production guarantees, deploy the same static files behind a host or reverse proxy that supports custom security response headers.</p>
         </section>
     </main>
 </div>

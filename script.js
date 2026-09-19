@@ -1044,7 +1044,7 @@ async function mergePdfs() {
                     } catch (downloadError) {
                         console.error('Download error:', downloadError);
                         // Ultimate fallback - open in new tab
-                        window.open(url, '_blank');
+                        window.open(url, '_blank', 'noopener,noreferrer');
                     }
                 });
             }
