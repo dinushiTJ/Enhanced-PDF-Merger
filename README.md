@@ -11,6 +11,7 @@ A powerful, client-side web application that merges multiple PDF files into a si
 * 🔄 **Reorder PDFs** - move files up/down to arrange merge order
 * 👀 **Live rendered preview** - see the actual merged PDF (rendered with PDF.js) right after merging
 * 🎉 **Delightful success screen** - summary metric cards, file details, one-click download, and a confetti celebration
+* 🔓 **Unlock protected PDFs** - permission-restricted PDFs are unlocked automatically; password-protected PDFs ask for their password, then can be merged or downloaded as an unlocked copy
 * 🔒 **Privacy first** - all processing happens in your browser, no uploads
 * 📱 **Mobile friendly** - responsive design works on all devices
 * 🛡️ **Error handling** - robust processing with detailed error messages
@@ -44,10 +45,9 @@ Works in all modern browsers:
 ## File Structure
 
 ```
-index.html            # Single file - everything included
-├── HTML structure    # Forms and drag & drop interface
-├── CSS styling       # Modern UI with pastel accents and animations
-├── JavaScript logic  # PDF merging, TOC generation, preview, and file handling
+index.html            # HTML structure - forms and drag & drop interface (open this)
+styles.css            # Modern UI with pastel accents and animations
+script.js             # PDF merging, TOC generation, unlocking, preview, and file handling
 ├── pdf-lib (CDN)     # PDF creation and merging
 ├── pdf.js (CDN)      # Inline rendering of the merged-PDF preview
 └── tsparticles-confetti (CDN)  # Success celebration animation
@@ -55,20 +55,20 @@ index.html            # Single file - everything included
 
 ## Technical Details
 * **Built with**: HTML5, CSS3, JavaScript ES6+
-* **Libraries (loaded from CDN, internet required)**: `pdf-lib` (merging), `pdf.js` (preview), `tsparticles-confetti` (success animation)
+* **Libraries (loaded from CDN, internet required)**: `@cantoo/pdf-lib` (merging and decryption; a pdf-lib fork), `pdf.js` (preview), `tsparticles-confetti` (success animation)
 * **File limit**: 100MB per PDF (browser memory dependent)
-* **Supported**: Standard PDF files (password-protected not supported)
+* **Supported**: Standard PDF files, including encrypted ones (RC4/AES-128/AES-256 password security). Certificate-based encryption isn't supported
 * **Processing**: Client-side only, no server uploads required
 
 ## Troubleshooting
 * **"Invalid PDF" Error**: Ensure file is actually a PDF, try re-saving in Adobe Reader
-* **Merge fails**: Skip problematic files using dialog option, check if encrypted
+* **Merge fails**: Skip problematic files using dialog option, unlock any password-protected PDF on its card first
 * **Performance issues**: Process smaller files, close other browser tabs
 * **Download problems**: Check browser permissions, disable popup blockers
 
 ## Contributing
 1. Fork the repo
-2. Make your changes to `index.html`
+2. Make your changes to `index.html`, `styles.css`, or `script.js`
 3. Test with various PDF files and sizes
 4. Submit a pull request
 
@@ -77,4 +77,4 @@ MIT License - use freely for any purpose.
 
 ---
 
-Tags: `pdf-merger` `pdf-tools` `table-of-contents` `javascript` `pdf-lib` `pdf-js` `pdf-preview` `confetti` `web-app` `client-side` `browser-tool` `no-upload` `privacy-focused` `single-file` `drag-and-drop` `responsive-design`
+Tags: `pdf-merger` `pdf-tools` `table-of-contents` `javascript` `pdf-lib` `pdf-js` `pdf-preview` `confetti` `web-app` `client-side` `browser-tool` `no-upload` `privacy-focused` `drag-and-drop` `responsive-design`
