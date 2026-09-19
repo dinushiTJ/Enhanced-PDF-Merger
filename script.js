@@ -1,15 +1,27 @@
 const { PDFDocument, rgb, StandardFonts } = PDFLib;
+const MAX_FILE_SIZE = 100 * 1024 * 1024;
+const MAX_TOTAL_SIZE = 250 * 1024 * 1024;
+const MAX_PAGES_PER_FILE = 500;
+const MAX_PREVIEW_PAGES = 100;
 
 // Configure PDF.js worker for the inline preview
 if (window.pdfjsLib) {
     pdfjsLib.GlobalWorkerOptions.workerSrc =
-        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        'pdf.worker.min.js';
 }
 
 let pdfFiles = new Map();
 let fileCounter = 0;
 let draggedId = null;
 let includeToc = true;
+let activeDownloadUrl = null;
+
+function revokeActiveDownloadUrl() {
+    if (activeDownloadUrl) {
+        URL.revokeObjectURL(activeDownloadUrl);
+        activeDownloadUrl = null;
+    }
+}
 
 // Smooth, constant-speed auto-scroll while dragging a card near the
 // viewport edges — replaces the browser's jumpy native drag auto-scroll.
@@ -127,8 +139,14 @@ function addPdfFile(file) {
         return;
     }
 
-    if (file.size > 100 * 1024 * 1024) { // 100MB limit
+    if (file.size > MAX_FILE_SIZE) { // 100MB limit
         alert(`The file "${file.name}" is too large (over 100MB). Please use a smaller file.`);
+        return;
+    }
+
+    const totalSize = Array.from(pdfFiles.values()).reduce((sum, data) => sum + data.file.size, 0);
+    if (totalSize + file.size > MAX_TOTAL_SIZE) {
+        alert('The combined input size cannot exceed 250MB. Remove a file or choose smaller PDFs.');
         return;
     }
 
@@ -258,23 +276,23 @@ async function downloadUnlocked(fileId) {
 
 function lockAreaHTML(fileId) {
     const d = pdfFiles.get(fileId);
+    const lockError = escapeHtml(d.lockError || '');
     switch (d.lock) {
         case 'checking':
             return `<div class="lock-status checking">${LOCK_ICON}Checking PDF security…</div>`;
         case 'unlocked':
             return `<div class="lock-status unlocked">${UNLOCK_ICON}
                 <span>${d.openPassword ? 'Password removed.' : 'Security restrictions removed.'}</span>
-                <button class="lock-link" onclick="downloadUnlocked('${fileId}')">Download unlocked copy</button>
+                <button class="lock-link" data-action="download-unlocked">Download unlocked copy</button>
             </div>`;
         case 'locked':
             return `<div class="lock-status locked">${LOCK_ICON}
                 <span>This PDF is password-protected. Enter its password to unlock it.</span>
                 <div class="lock-form">
-                    <input type="password" class="toc-input lock-input" placeholder="PDF password"
-                           autocomplete="off" onkeydown="if (event.key === 'Enter') unlockPdf('${fileId}')">
-                    <button class="unlock-btn" onclick="unlockPdf('${fileId}')">Unlock</button>
+                    <input type="password" class="toc-input lock-input" placeholder="PDF password" autocomplete="off">
+                    <button class="unlock-btn" data-action="unlock">Unlock</button>
                 </div>
-                ${d.lockError ? `<div class="lock-error">${d.lockError}</div>` : ''}
+                ${d.lockError ? `<div class="lock-error">${lockError}</div>` : ''}
             </div>`;
         case 'failed':
             return `<div class="lock-status failed">${LOCK_ICON}
@@ -287,13 +305,30 @@ function lockAreaHTML(fileId) {
 
 function refreshLockArea(fileId) {
     const area = document.getElementById(fileId)?.querySelector('.lock-area');
-    if (area) area.innerHTML = lockAreaHTML(fileId);
+    if (area) {
+        area.innerHTML = lockAreaHTML(fileId);
+        bindLockControls(area, fileId);
+    }
+}
+
+function bindLockControls(area, fileId) {
+    area.querySelector('[data-action="download-unlocked"]')?.addEventListener('click', () => downloadUnlocked(fileId));
+    const input = area.querySelector('.lock-input');
+    const unlock = area.querySelector('[data-action="unlock"]');
+    input?.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') unlockPdf(fileId);
+    });
+    unlock?.addEventListener('click', () => unlockPdf(fileId));
 }
 
 function createPdfItem(fileId, fileName) {
     const pdfItem = document.createElement('div');
     pdfItem.className = 'pdf-item has-file' + (movedFiles.has(fileId) ? ' just-moved' : '');
     pdfItem.id = fileId;
+    const data = pdfFiles.get(fileId);
+    const safeFileName = escapeHtml(fileName);
+    const safeTitle = escapeHtml(data.title);
+    const safePageTitle = escapeHtml(data.pageTitle);
 
     pdfItem.innerHTML = `
             <div class="pdf-header">
@@ -302,29 +337,36 @@ function createPdfItem(fileId, fileName) {
                     <span class="pdf-number">PDF ${pdfFiles.get(fileId).order}</span>
                 </div>
                 <div>
-                    <button class="move-btn" onclick="moveFile('${fileId}', 'up')" ${pdfFiles.get(fileId).order === 1 ? 'disabled' : ''}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg></button>
-                    <button class="move-btn" onclick="moveFile('${fileId}', 'down')" ${pdfFiles.get(fileId).order === pdfFiles.size ? 'disabled' : ''}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
-                    <button class="remove-btn" onclick="removePdfFile('${fileId}')">&times;</button>
+                     <button class="move-btn" data-action="move-up" ${pdfFiles.get(fileId).order === 1 ? 'disabled' : ''}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg></button>
+                     <button class="move-btn" data-action="move-down" ${pdfFiles.get(fileId).order === pdfFiles.size ? 'disabled' : ''}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
+                     <button class="remove-btn" data-action="remove">&times;</button>
                 </div>
             </div>
-            <div class="file-input-wrapper">
-                <span class="file-name"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>${fileName}</span>
-            </div>
-            <div class="lock-area">${lockAreaHTML(fileId)}</div>
-            <div class="title-field">
-                <label for="${fileId}-toc-title">Table of Contents title</label>
-                <small>Appears as the clickable entry in the TOC.</small>
-                <input id="${fileId}-toc-title" type="text" class="toc-input" value="${pdfFiles.get(fileId).title}"
-                       onchange="updateTitle('${fileId}', this.value)">
-            </div>
-            <div class="title-field">
-                <label for="${fileId}-page-title">Section page title <span>(optional)</span></label>
-                <small>Printed at the top of this PDF section's first page.</small>
-                <input id="${fileId}-page-title" type="text" class="toc-input" value="${pdfFiles.get(fileId).pageTitle}"
+             <div class="file-input-wrapper">
+                 <span class="file-name"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>${safeFileName}</span>
+             </div>
+             <div class="lock-area">${lockAreaHTML(fileId)}</div>
+             <div class="title-field">
+                 <label for="${fileId}-toc-title">Table of Contents title</label>
+                 <small>Appears as the clickable entry in the TOC.</small>
+                 <input id="${fileId}-toc-title" type="text" class="toc-input" value="${safeTitle}"
+                         >
+             </div>
+             <div class="title-field">
+                 <label for="${fileId}-page-title">Section page title <span>(optional)</span></label>
+                 <small>Printed at the top of this PDF section's first page.</small>
+                 <input id="${fileId}-page-title" type="text" class="toc-input" value="${safePageTitle}"
                        placeholder="Leave blank to hide"
-                       onchange="updatePageTitle('${fileId}', this.value)">
+                        >
             </div>
-        `;
+         `;
+
+    pdfItem.querySelector('[data-action="move-up"]').addEventListener('click', () => moveFile(fileId, 'up'));
+    pdfItem.querySelector('[data-action="move-down"]').addEventListener('click', () => moveFile(fileId, 'down'));
+    pdfItem.querySelector('[data-action="remove"]').addEventListener('click', () => removePdfFile(fileId));
+    pdfItem.querySelector(`#${fileId}-toc-title`).addEventListener('change', (event) => updateTitle(fileId, event.target.value));
+    pdfItem.querySelector(`#${fileId}-page-title`).addEventListener('change', (event) => updatePageTitle(fileId, event.target.value));
+    bindLockControls(pdfItem.querySelector('.lock-area'), fileId);
 
     // Handle-only dragging: keep the card non-draggable so the text
     // inputs stay selectable, and only enable it while the grip is held.
@@ -371,6 +413,16 @@ function createPdfItem(fileId, fileName) {
     });
 
     pdfContainer.appendChild(pdfItem);
+}
+
+// User-controlled filenames, titles, and parser messages must not be treated as HTML.
+function escapeHtml(value) {
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
 
 function moveFile(fileId, direction) {
@@ -512,6 +564,7 @@ function updatePageTitle(fileId, pageTitle) {
 function clearAllFiles() {
     pdfFiles.clear();
     movedFiles.clear();
+    revokeActiveDownloadUrl();
     pdfContainer.innerHTML = '';
     fileCounter = 0;
     updateUI();
@@ -665,6 +718,9 @@ async function mergePdfs() {
                 const pageCount = pdf.getPageCount();
                 if (pageCount === 0) {
                     throw new Error('PDF appears to be empty');
+                }
+                if (pageCount > MAX_PAGES_PER_FILE) {
+                    throw new Error(`PDF exceeds the ${MAX_PAGES_PER_FILE}-page safety limit`);
                 }
 
                 // Record the starting page for this section
@@ -854,7 +910,9 @@ async function mergePdfs() {
 
         // Create download link with better blob handling
         const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+        revokeActiveDownloadUrl();
         const url = URL.createObjectURL(blob);
+        activeDownloadUrl = url;
 
         // Generate unique filename with timestamp
         const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
@@ -942,7 +1000,8 @@ async function mergePdfs() {
         try {
             const previewDoc = await pdfjsLib.getDocument({ data: pdfBytes.slice(0) }).promise;
             const container = document.getElementById('pdfPreview');
-            for (let p = 1; p <= previewDoc.numPages; p++) {
+            const previewPages = Math.min(previewDoc.numPages, MAX_PREVIEW_PAGES);
+            for (let p = 1; p <= previewPages; p++) {
                 const page = await previewDoc.getPage(p);
                 const viewport = page.getViewport({ scale: 1.2 });
                 const canvas = document.createElement('canvas');
@@ -951,6 +1010,12 @@ async function mergePdfs() {
                 canvas.style.cssText = 'width:100%; height:auto; display:block; margin:0 auto 14px; background:#fff; border-radius:4px; box-shadow:0 2px 10px rgba(0,0,0,0.15);';
                 container.appendChild(canvas);
                 await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+            }
+            if (previewDoc.numPages > MAX_PREVIEW_PAGES) {
+                const notice = document.createElement('p');
+                notice.className = 'preview-limit';
+                notice.textContent = `Preview limited to the first ${MAX_PREVIEW_PAGES} pages. Download the PDF to view the remaining pages.`;
+                container.appendChild(notice);
             }
         } catch (previewErr) {
             console.warn('Preview render failed:', previewErr);
@@ -982,10 +1047,11 @@ async function mergePdfs() {
 
     } catch (error) {
         console.error('Merge Error:', error);
+        const safeErrorMessage = escapeHtml(error.message || 'Unknown error');
         result.innerHTML = `
                 <div class="error">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-4px;margin-right:6px"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg><strong>Merge Failed:</strong><br>
-                    ${error.message}
+                    ${safeErrorMessage}
                     <br><br>
                     <strong>Troubleshooting tips:</strong><br>
                     • If a PDF is password protected, re-add it and enter its password when asked<br>

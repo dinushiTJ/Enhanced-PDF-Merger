@@ -6,6 +6,8 @@
     <title>Free PDF Merger Online - Merge PDF Files</title>
     <meta name="description" content="Merge PDF files online for free. Combine multiple PDFs into one document directly in your browser without uploading your files.">
     <meta name="robots" content="index, follow">
+    <meta name="referrer" content="no-referrer">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'">
     <link rel="canonical" href="https://dinushitj.github.io/Enhanced-PDF-Merger/">
     <meta name="theme-color" content="#fff7fb">
     <meta property="og:type" content="website">
@@ -20,18 +22,9 @@
     <link rel="icon" type="image/png" href="logo.png">
 
     <!-- @cantoo/pdf-lib: drop-in pdf-lib fork (same PDFLib global) that can decrypt password-protected PDFs -->
-    <script src="https://cdn.jsdelivr.net/npm/@cantoo/pdf-lib@2.11.1/dist/pdf-lib.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/tsparticles-confetti@2.9.3/tsparticles.confetti.bundle.min.js"></script>
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-S8HV3YD8Y9"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-
-      gtag('config', 'G-S8HV3YD8Y9');
-    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@cantoo/pdf-lib@2.11.1/dist/pdf-lib.min.js" integrity="sha384-BcRbGROz3cx4LSKcOw2L5YxAxiJPWIEmXRMrYbXu87aSiU5uMQ4qB9v8FEjrBhhq" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" integrity="sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tsparticles-confetti@2.9.3/tsparticles.confetti.bundle.min.js" integrity="sha384-6wBibQTHV5/0JrJ56FlqHbv7m4+E/jMtOC4OxCI+ZC64SC7HSHPQA0Gp2mfmDnUv" crossorigin="anonymous"></script>
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
