@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PDF Merger with Table of Contents</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236366f1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M4 19.5A2.5 2.5 0 0 1 6.5 17H20'/><path d='M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z'/></svg>">
+    <link rel="icon" type="image/png" href="logo.png">
 
     <!-- @cantoo/pdf-lib: drop-in pdf-lib fork (same PDFLib global) that can decrypt password-protected PDFs -->
     <script src="https://cdn.jsdelivr.net/npm/@cantoo/pdf-lib@2.11.1/dist/pdf-lib.min.js"></script>
@@ -23,7 +23,10 @@
 </head>
 <body>
 <div class="container">
-    <h1><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>Enhanced PDF Merger</h1>
+    <h1>
+        <span class="logo-bubble"><img src="logo.png" alt="PDF merger logo"></span>
+        <span class="title-text">Enhanced PDF Merger</span>
+    </h1>
 
     <div class="stats" id="stats">
         <span id="file-count">0</span> PDFs ready to merge
