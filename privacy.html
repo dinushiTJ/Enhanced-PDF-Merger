@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy and Security | PDF Merger</title>
+    <meta name="description" content="Learn how PDF Merger processes files locally, what browser limitations apply, and how downloaded PDF content is handled.">
+    <meta name="robots" content="index, follow">
+    <meta name="referrer" content="no-referrer">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'">
+    <link rel="canonical" href="https://dinushitj.github.io/Enhanced-PDF-Merger/privacy.html">
+    <link rel="icon" type="image/png" href="logo.png">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="docs-page">
+<div class="container">
+    <header class="site-header">
+        <a class="brand" href="index.html" aria-label="PDF Merger home">
+            <span class="brand-mark"><img src="logo.png" alt=""></span>
+            <span>PDF Merger</span>
+        </a>
+        <a class="back-link" href="index.html">Open the PDF merger</a>
+    </header>
+
+    <main>
+        <h1>Privacy and Security</h1>
+        <p class="hero-subtitle">How your files are handled by PDF Merger.</p>
+
+        <section class="content-section explanation-section" aria-labelledby="processing-title">
+            <p class="eyebrow">Local processing</p>
+            <h2 id="processing-title">Your PDFs are processed in your browser</h2>
+            <p>PDF Merger does not provide an application upload endpoint. Files selected in the tool are read and processed locally by your browser, then the merged result is created as a temporary browser download.</p>
+            <p>Because this is client-side software, browser extensions, malware, or compromised third-party JavaScript running in the page could access files that you select. The application pins its CDN scripts with Subresource Integrity, but sensitive documents should only be processed in a trusted browser environment.</p>
+        </section>
+
+        <section class="content-section" aria-labelledby="limits-title">
+            <p class="eyebrow">Safety limits</p>
+            <h2 id="limits-title">Browser and processing limits</h2>
+            <p>The tool limits each input file to 100 MB, the combined input size to 250 MB, each source PDF to 500 pages, and the inline preview to 100 pages. These limits reduce the risk of excessive browser memory and CPU use, but unusually complex PDFs can still affect browser performance.</p>
+            <p>PDF passwords are used in page memory while an unlock or merge operation needs them. The tool does not send them to an application server.</p>
+        </section>
+
+        <section class="content-section use-cases-section" aria-labelledby="pdf-content-title">
+            <p class="eyebrow">PDF content</p>
+            <h2 id="pdf-content-title">Downloaded PDFs are not fully sanitized</h2>
+            <p>The merger copies pages from your source PDFs. Existing annotations, links, attachments, or other PDF actions may remain in the downloaded file. Open downloaded PDFs with a trusted, up-to-date PDF viewer and do not treat the merger as a malware scanner or document sanitizer.</p>
+            <p>PDF Merger preserves normal PDF content and quality instead of rasterizing every page, so some source-document features are intentionally retained.</p>
+        </section>
+
+        <section class="content-section" aria-labelledby="hosting-title">
+            <p class="eyebrow">Deployment</p>
+            <h2 id="hosting-title">Static hosting security</h2>
+            <p>This project is hosted as a static GitHub Pages site. The pages include a Content Security Policy and referrer policy in their HTML, but GitHub Pages does not provide this project with custom HTTP response headers such as HSTS, X-Frame-Options, or X-Content-Type-Options.</p>
+            <p>For stronger production guarantees, deploy the same static files behind a host or reverse proxy that supports security response headers.</p>
+        </section>
+    </main>
+</div>
+
+<footer class="site-footer">
+    <p>PDF Merger. Free browser-based PDF tools.</p>
+    <nav aria-label="Footer navigation"><a href="index.html">PDF merger</a><a href="docs.html">Documentation</a><a href="https://github.com/dinushiTJ/Enhanced-PDF-Merger">GitHub</a></nav>
+</footer>
+</body>
+</html>

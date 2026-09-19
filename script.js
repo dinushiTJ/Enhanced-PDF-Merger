@@ -15,6 +15,7 @@ let fileCounter = 0;
 let draggedId = null;
 let includeToc = true;
 let activeDownloadUrl = null;
+let mergeInProgress = false;
 
 function revokeActiveDownloadUrl() {
     if (activeDownloadUrl) {
@@ -599,6 +600,9 @@ async function mergePdfs() {
     const progress = document.getElementById('progress');
     const result = document.getElementById('result');
 
+    if (mergeInProgress) return;
+    mergeInProgress = true;
+
     // Merge clears the "moved" highlight on all cards.
     movedFiles.clear();
     pdfContainer.querySelectorAll('.pdf-item.just-moved')
@@ -613,6 +617,7 @@ async function mergePdfs() {
     if (pdfFiles.size === 0) {
         result.innerHTML = '<div class="error"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-4px;margin-right:6px"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>Please add at least one PDF file.</div>';
         result.style.display = 'block';
+        mergeInProgress = false;
         return;
     }
 
@@ -1066,6 +1071,7 @@ async function mergePdfs() {
         updateUI(); // re-enables merge unless a file still needs unlocking
         progress.style.display = 'none';
         tocToggle.disabled = false;
+        mergeInProgress = false;
     }
 }
 
