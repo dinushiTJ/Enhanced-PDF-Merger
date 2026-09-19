@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://dinushitj.github.io/Enhanced-PDF-Merger/sitemap.xml

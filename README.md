@@ -1,7 +1,7 @@
-# PDF Merger with Table of Contents
+# PDF Merger
 
 ## Overview
-A powerful, client-side web application that merges multiple PDF files into a single document with an automatically generated, clickable table of contents. Perfect for combining reports, documents, or creating organized PDF collections.
+A free, client-side PDF merger that safely combines multiple PDF files into one document with an optional clickable table of contents. It is useful for reports, applications, immigration documents, visa paperwork, scanned records, and organized PDF collections.
 
 ## Features
 * ✨ **No installation required** - just open and use
@@ -15,6 +15,7 @@ A powerful, client-side web application that merges multiple PDF files into a si
 * 🔒 **Privacy first** - all processing happens in your browser, no uploads
 * 📱 **Mobile friendly** - responsive design works on all devices
 * 🛡️ **Error handling** - robust processing with detailed error messages
+* 🔎 **Search-friendly documentation** - includes browser privacy details, usage steps, and common PDF merger questions
 
 ## Quick Start
 1. Open `index.html` in any web browser
@@ -49,6 +50,7 @@ Works in all modern browsers:
 index.html            # HTML structure - forms and drag & drop interface (open this)
 styles.css            # Modern UI with pastel accents and animations
 script.js             # PDF merging, TOC generation, unlocking, preview, and file handling
+docs.html             # SEO documentation, guide, benefits, and FAQ
 ├── pdf-lib (CDN)     # PDF creation and merging
 ├── pdf.js (CDN)      # Inline rendering of the merged-PDF preview
 └── tsparticles-confetti (CDN)  # Success celebration animation
@@ -78,4 +80,4 @@ MIT License - use freely for any purpose.
 
 ---
 
-Tags: `pdf-merger` `pdf-tools` `table-of-contents` `javascript` `pdf-lib` `pdf-js` `pdf-preview` `confetti` `web-app` `client-side` `browser-tool` `no-upload` `privacy-focused` `drag-and-drop` `responsive-design`
+Tags: `pdf-merger` `merge-pdf-online` `combine-pdf-files` `free-pdf-merger` `safe-pdf-merger` `best-pdf-merger` `immigration-pdf-merger` `visa-documents` `pdf-tools` `table-of-contents` `javascript` `pdf-lib` `pdf-js` `pdf-preview` `confetti` `web-app` `client-side` `browser-tool` `no-upload` `privacy-focused` `drag-and-drop` `responsive-design`
