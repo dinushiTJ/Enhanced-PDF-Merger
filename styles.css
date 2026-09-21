@@ -143,6 +143,47 @@ body::after {
     object-fit: contain;
 }
 
+/* ---- GitHub star button ---- */
+.github-star {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 60;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 16px;
+    background: #ffffff;
+    color: var(--ink);
+    border: 2px solid var(--line);
+    border-radius: var(--pill);
+    box-shadow: var(--shadow-soft);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 800;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.2s ease;
+}
+
+.github-star:hover {
+    border-color: var(--pink);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-pop);
+}
+
+.github-star svg {
+    flex-shrink: 0;
+}
+
+.github-star-count {
+    display: none;
+    padding: 1px 8px;
+    background: var(--pink-soft);
+    color: var(--pink-deep);
+    border-radius: var(--pill);
+    font-size: 12px;
+    font-weight: 900;
+}
+
 .site-header nav,
 .site-footer nav {
     display: flex;
@@ -1663,6 +1704,8 @@ svg { flex-shrink: 0; }
     .site-header { align-items: flex-start; margin-bottom: 24px; }
     .site-header nav { gap: 10px; }
     .site-header nav a { font-size: 12px; }
+    .github-star { top: 10px; right: 10px; padding: 7px 10px; gap: 5px; }
+    .github-star-label { display: none; }
     h1 { font-size: 1.9em; gap: 10px; }
     .logo-bubble { width: 50px; height: 50px; border-radius: 18px; }
     .logo-bubble img { width: 42px; height: 42px; }
