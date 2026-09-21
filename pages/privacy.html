@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Privacy and Security | PDF Merger</title>
-    <meta name="description" content="Learn how PDF Merger processes files locally, what browser limitations apply, and how downloaded PDF content is handled.">
+    <title>Privacy and Security | PDF Pool</title>
+    <meta name="description" content="Learn how PDF Pool processes files locally, what browser limitations apply, and how downloaded PDF content is handled.">
     <meta name="robots" content="index, follow">
     <meta name="referrer" content="no-referrer">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://api.github.com; object-src 'none'; base-uri 'self'; form-action 'self'">
-    <link rel="canonical" href="https://dinushitj.github.io/Enhanced-PDF-Merger/privacy.html">
-    <link rel="icon" type="image/png" href="logo.png">
-    <link rel="stylesheet" href="styles.css?v=2">
+    <link rel="canonical" href="https://dinushitj.github.io/Enhanced-PDF-Merger/pages/privacy.html">
+    <link rel="icon" type="image/png" href="../logo.png">
+    <link rel="stylesheet" href="../styles.css?v=3">
 </head>
 <body class="docs-page security-page">
 <a class="github-star" href="https://github.com/dinushiTJ/Enhanced-PDF-Merger" target="_blank" rel="noopener" aria-label="Star Enhanced PDF Merger on GitHub">
@@ -20,11 +20,30 @@
 </a>
 <div class="container">
     <header class="site-header">
-        <a class="brand" href="index.html" aria-label="PDF Merger home">
-            <span class="brand-mark"><img src="logo.png" alt=""></span>
-            <span>PDF Merger</span>
+        <a class="brand" href="../index.html" aria-label="PDF Pool home">
+            <span class="brand-mark"><img src="../logo.png" alt=""></span>
+            <span>PDF Pool</span>
         </a>
-        <a class="back-link" href="index.html">Open the PDF merger</a>
+        <div class="header-actions">
+            <a class="back-link" href="../index.html">Open the PDF merger</a>
+            <details class="tools-menu">
+                <summary>Tools <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></summary>
+                <div class="tools-menu-panel">
+                    <a href="../index.html">Merge PDF</a>
+                    <a href="split.html">Split PDF</a>
+                    <a href="organize.html">Organize PDF</a>
+                    <a href="rotate.html">Rotate PDF</a>
+                    <a href="crop.html">Crop PDF</a>
+                    <a href="watermark.html">Watermark PDF</a>
+                    <a href="page-numbers.html">Page Numbers</a>
+                    <a href="compress.html">Compress PDF</a>
+                    <a href="pdf-to-pdfa.html">PDF to PDF/A</a>
+                    <a href="html-to-pdf.html">HTML to PDF</a>
+                    <a href="jpg-to-pdf.html">JPG to PDF</a>
+                    <a href="pdf-to-jpg.html">PDF to JPG</a>
+                </div>
+            </details>
+        </div>
     </header>
 
     <main class="security-main">
@@ -44,7 +63,7 @@
             <article class="security-card">
                 <span class="security-card-label">02 / Integrity</span>
                 <h2>Dependencies pinned</h2>
-                <p>CDN scripts use pinned versions and Subresource Integrity checks. The PDF.js worker is served locally.</p>
+                <p>Every CDN script (pdf-lib, PDF.js, canvas-confetti, and — only on the HTML to PDF page — html2canvas and jsPDF) is loaded from a pinned version with a Subresource Integrity hash. The PDF.js worker is served locally.</p>
             </article>
             <article class="security-card">
                 <span class="security-card-label">03 / Resilience</span>
@@ -64,7 +83,7 @@
                 <div><p class="eyebrow">Data handling</p><h2 id="processing-title">What happens to your files</h2></div>
             </div>
             <div class="security-copy">
-                <p>PDF Merger processes selected files locally and creates the merged result as a temporary browser download. The project does not operate a file-upload API, database, or document storage service.</p>
+                <p>PDF Pool processes selected files locally and creates the merged result as a temporary browser download. The project does not operate a file-upload API, database, or document storage service.</p>
                 <p>PDF passwords are used in page memory only while an unlock or merge operation needs them. Do not use the tool on a device or browser you do not trust.</p>
             </div>
         </section>
@@ -89,14 +108,26 @@
                 <div><p class="eyebrow">PDF boundaries</p><h2 id="pdf-content-title">The output is not a malware scanner</h2></div>
             </div>
             <div class="security-copy">
-                <p>The merger copies pages rather than rasterizing them. Existing annotations, links, attachments, or other PDF actions may remain in the downloaded file.</p>
-                <p>Open downloaded PDFs with a trusted, up-to-date viewer. Do not treat PDF Merger as a document sanitizer or security scanner.</p>
+                <p>Most tools (Merge, Split, Organize, Rotate, Crop, Watermark, Page Numbers, JPG to PDF, PDF to JPG) copy or directly edit pages rather than rasterizing them. Existing annotations, links, attachments, or other PDF actions may remain in the downloaded file.</p>
+                <p>Open downloaded PDFs with a trusted, up-to-date viewer. Do not treat PDF Pool as a document sanitizer or security scanner.</p>
+            </div>
+        </section>
+
+        <section class="security-section" aria-labelledby="tool-notes-title">
+            <div class="security-section-heading">
+                <span class="security-index">D</span>
+                <div><p class="eyebrow">Tool-specific notes</p><h2 id="tool-notes-title">A few tools work differently</h2></div>
+            </div>
+            <div class="security-copy">
+                <p><strong>HTML to PDF</strong> loads your uploaded file into a sandboxed, hidden frame with scripting disabled (embedded <code>&lt;script&gt;</code> tags are also stripped as a second layer of defense) before rendering a visual snapshot. External images, fonts, or stylesheets referenced by the file are not fetched, so nothing about your file or your browser is leaked to a third party. The file is never uploaded anywhere.</p>
+                <p><strong>Compress PDF</strong> re-renders each page as a compressed image, which shrinks scanned or image-heavy PDFs but makes the resulting text non-selectable and non-searchable. This happens entirely in your browser; nothing is uploaded.</p>
+                <p><strong>PDF to PDF/A</strong> adds PDF/A identification metadata to your file. It is not a certified conformance tool and has not been validated against official PDF/A validators — do not rely on it for legally or archivally mandated compliance.</p>
             </div>
         </section>
 
         <section class="security-section" aria-labelledby="hosting-title">
             <div class="security-section-heading">
-                <span class="security-index">D</span>
+                <span class="security-index">E</span>
                 <div><p class="eyebrow">Deployment</p><h2 id="hosting-title">How the site is protected</h2></div>
             </div>
             <div class="security-copy">
@@ -108,9 +139,9 @@
 </div>
 
 <footer class="site-footer">
-    <p>PDF Merger. Free browser-based PDF tools.</p>
-    <nav aria-label="Footer navigation"><a href="index.html">PDF merger</a><a href="docs.html">Documentation</a><a href="https://github.com/dinushiTJ/Enhanced-PDF-Merger">GitHub</a></nav>
+    <p>PDF Pool. Free browser-based PDF tools.</p>
+    <nav aria-label="Footer navigation"><a href="../index.html">PDF merger</a><a href="docs.html">Documentation</a><a href="https://github.com/dinushiTJ/Enhanced-PDF-Merger">GitHub</a></nav>
 </footer>
-<script src="github-star.js" defer></script>
+<script src="../js/github-star.js" defer></script>
 </body>
 </html>

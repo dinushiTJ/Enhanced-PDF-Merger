@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF to PDF/A Online - Free & Private</title>
+    <meta name="description" content="Add PDF/A identification metadata to a PDF for free, directly in your browser. No upload, no sign-up.">
+    <meta name="robots" content="index, follow">
+    <meta name="referrer" content="no-referrer">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' blob:; connect-src 'self' https://api.github.com; object-src 'none'; base-uri 'self'; form-action 'self'">
+    <link rel="canonical" href="https://dinushitj.github.io/Enhanced-PDF-Merger/pages/pdf-to-pdfa.html">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="PDF to PDF/A Online - Free & Private">
+    <meta property="og:description" content="Add PDF/A identification metadata to a PDF, directly in your browser.">
+    <meta property="og:url" content="https://dinushitj.github.io/Enhanced-PDF-Merger/pages/pdf-to-pdfa.html">
+    <meta property="og:image" content="https://dinushitj.github.io/Enhanced-PDF-Merger/logo.png">
+    <link rel="icon" type="image/png" href="../logo.png">
+    <link rel="stylesheet" href="../styles.css?v=3">
+</head>
+<body class="app-page">
+<a class="github-star" href="https://github.com/dinushiTJ/Enhanced-PDF-Merger" target="_blank" rel="noopener" aria-label="Star Enhanced PDF Merger on GitHub">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.73.5.5 5.73.5 12c0 5.09 3.29 9.4 7.86 10.93.57.1.78-.25.78-.55v-2.15c-3.2.7-3.87-1.36-3.87-1.36-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.71.08-.71 1.17.08 1.78 1.2 1.78 1.2 1.03 1.77 2.71 1.26 3.37.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.79 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.12 3.05.74.8 1.19 1.83 1.19 3.09 0 4.42-2.7 5.4-5.26 5.68.41.36.78 1.07.78 2.16v3.2c0 .3.2.66.79.55A11.5 11.5 0 0 0 23.5 12c0-6.27-5.23-11.5-11.5-11.5z"/></svg>
+    <span class="github-star-label">Star</span>
+    <span class="github-star-count"></span>
+</a>
+<div class="container">
+    <header class="site-header">
+        <a class="brand" href="../index.html" aria-label="PDF Pool home">
+            <span class="brand-mark"><img src="../logo.png" alt=""></span>
+            <span>PDF Pool</span>
+        </a>
+        <details class="tools-menu">
+            <summary>Tools <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></summary>
+            <div class="tools-menu-panel">
+                <a href="../index.html">Merge PDF</a>
+                <a href="split.html">Split PDF</a>
+                <a href="organize.html">Organize PDF</a>
+                <a href="rotate.html">Rotate PDF</a>
+                <a href="crop.html">Crop PDF</a>
+                <a href="watermark.html">Watermark PDF</a>
+                <a href="page-numbers.html">Page Numbers</a>
+                <a href="compress.html">Compress PDF</a>
+                <a href="pdf-to-pdfa.html" class="current">PDF to PDF/A</a>
+                <a href="html-to-pdf.html">HTML to PDF</a>
+                <a href="jpg-to-pdf.html">JPG to PDF</a>
+                <a href="pdf-to-jpg.html">PDF to JPG</a>
+            </div>
+        </details>
+    </header>
+    <main>
+    <h1>
+        <span class="logo-bubble"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M10 12h4"/><path d="M10 16h4"/></svg></span>
+        <span class="title-text">PDF to PDF/A</span>
+    </h1>
+
+    <div class="security-boundary" role="note" style="margin-bottom:22px">
+        <strong>Scope of this tool</strong>
+        <span>This adds PDF/A identification metadata (XMP) to your file. It does <strong>not</strong> guarantee full ISO 19005 PDF/A conformance and has not been validated against official PDF/A validators (e.g. veraPDF). For legally or archivally mandated PDF/A compliance, use certified desktop or server software.</span>
+    </div>
+
+    <div class="stats" id="stats"><span id="page-count">0</span> pages loaded</div>
+
+    <div class="drag-drop-area" id="dragDropArea">
+        <div class="drag-drop-text"><svg class="drag-drop-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 13v8"/><path d="m8 17 4-4 4 4"/><path d="M20 16.58A5 5 0 0 0 18 7h-1.26A8 8 0 1 0 4 15.25"/></svg>Drag &amp; Drop a PDF file here</div>
+        <div class="drag-drop-subtext">or click "Add PDF File" below</div>
+    </div>
+
+    <div class="upload-section">
+        <button type="button" id="addFileBtn" class="add-file-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>Add PDF File</button>
+
+        <div class="empty-state" id="emptyState">
+            <div class="empty-state-icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></div>
+            <div>No PDF added yet</div>
+            <div class="empty-state-hint">Add a PDF to tag it with PDF/A metadata</div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button type="button" id="convertBtn" class="merge-btn" disabled><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Convert to PDF/A</button>
+        <button type="button" id="clearAllBtn" class="clear-all-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>Clear</button>
+    </div>
+
+    <div id="progress" class="progress"></div>
+    <div id="result"></div>
+    <p class="docs-link"><a href="docs.html">Learn how to merge PDF files</a></p>
+    </main>
+</div>
+
+<footer class="site-footer">
+    <p>© <span id="year"></span> PDF Pool. Free browser-based PDF tools.</p>
+    <nav aria-label="Footer navigation"><a href="docs.html">Documentation</a><a href="privacy.html">Privacy &amp; security</a><a href="https://github.com/dinushiTJ/Enhanced-PDF-Merger">GitHub</a></nav>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@cantoo/pdf-lib@2.11.1/dist/pdf-lib.min.js" integrity="sha384-BcRbGROz3cx4LSKcOw2L5YxAxiJPWIEmXRMrYbXu87aSiU5uMQ4qB9v8FEjrBhhq" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" integrity="sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/tsparticles-confetti@2.9.3/tsparticles.confetti.bundle.min.js" integrity="sha384-6wBibQTHV5/0JrJ56FlqHbv7m4+E/jMtOC4OxCI+ZC64SC7HSHPQA0Gp2mfmDnUv" crossorigin="anonymous"></script>
+<script src="../js/pdf-loader.js"></script>
+<script src="../js/pdf-to-pdfa.js"></script>
+<script src="../js/github-star.js" defer></script>
+</body>
+</html>

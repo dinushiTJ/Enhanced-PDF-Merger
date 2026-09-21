@@ -3,21 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Free PDF Merger Online - Merge PDF Files</title>
-    <meta name="description" content="Merge PDF files online for free. Combine multiple PDFs into one document directly in your browser without uploading your files.">
+    <title>PDF Pool - Merge, Split, Compress & More Free PDF Tools</title>
+    <meta name="description" content="PDF Pool is a free set of browser-based PDF tools: merge, split, organize, rotate, crop, watermark, compress, and convert PDFs, all without uploading your files.">
     <meta name="robots" content="index, follow">
     <meta name="referrer" content="no-referrer">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' blob:; connect-src 'self' https://api.github.com; object-src 'none'; base-uri 'self'; form-action 'self'">
     <link rel="canonical" href="https://dinushitj.github.io/Enhanced-PDF-Merger/">
     <meta name="theme-color" content="#fff7fb">
     <meta property="og:type" content="website">
-    <meta property="og:title" content="Free PDF Merger Online - Merge PDF Files">
-    <meta property="og:description" content="Combine multiple PDF files into one document directly in your browser without uploading your files.">
+    <meta property="og:title" content="PDF Pool - Merge, Split, Compress & More Free PDF Tools">
+    <meta property="og:description" content="A free set of browser-based PDF tools: merge, split, organize, rotate, crop, watermark, compress, and convert PDFs, all without uploading your files.">
     <meta property="og:url" content="https://dinushitj.github.io/Enhanced-PDF-Merger/">
     <meta property="og:image" content="https://dinushitj.github.io/Enhanced-PDF-Merger/logo.png">
     <meta name="twitter:card" content="summary">
-    <meta name="twitter:title" content="Free PDF Merger Online - Merge PDF Files">
-    <meta name="twitter:description" content="Combine multiple PDF files into one document directly in your browser without uploading your files.">
+    <meta name="twitter:title" content="PDF Pool - Merge, Split, Compress & More Free PDF Tools">
+    <meta name="twitter:description" content="A free set of browser-based PDF tools: merge, split, organize, rotate, crop, watermark, compress, and convert PDFs, all without uploading your files.">
     <meta name="twitter:image" content="https://dinushitj.github.io/Enhanced-PDF-Merger/logo.png">
     <link rel="icon" type="image/png" href="logo.png">
 
@@ -29,21 +29,21 @@
     {
       "@context": "https://schema.org",
       "@type": "WebApplication",
-      "name": "Free PDF Merger Online",
+      "name": "PDF Pool",
       "url": "https://dinushitj.github.io/Enhanced-PDF-Merger/",
-      "description": "A free browser-based tool for combining multiple PDF files into one document.",
+      "description": "A free set of browser-based PDF tools, including merge, split, organize, rotate, crop, watermark, compress, and convert.",
       "applicationCategory": "UtilitiesApplication",
       "operatingSystem": "Web Browser",
       "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
       "featureList": [
-        "Merge multiple PDF files",
-        "Reorder PDF files",
-        "Generate a clickable table of contents",
+        "Merge, split, and organize PDF files",
+        "Rotate, crop, watermark, and number pages",
+        "Compress PDFs and convert to/from JPG, HTML, and PDF/A",
         "Process files locally in the browser"
       ]
     }
     </script>
-    <link rel="stylesheet" href="styles.css?v=2">
+    <link rel="stylesheet" href="styles.css?v=3">
 </head>
 <body class="app-page">
 <a class="github-star" href="https://github.com/dinushiTJ/Enhanced-PDF-Merger" target="_blank" rel="noopener" aria-label="Star Enhanced PDF Merger on GitHub">
@@ -52,10 +52,33 @@
     <span class="github-star-count"></span>
 </a>
 <div class="container">
+    <header class="site-header">
+        <a class="brand" href="index.html" aria-label="PDF Pool home">
+            <span class="brand-mark"><img src="logo.png" alt=""></span>
+            <span>PDF Pool</span>
+        </a>
+        <details class="tools-menu">
+            <summary>Tools <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></summary>
+            <div class="tools-menu-panel">
+                <a href="index.html" class="current">Merge PDF</a>
+                <a href="pages/split.html">Split PDF</a>
+                <a href="pages/organize.html">Organize PDF</a>
+                <a href="pages/rotate.html">Rotate PDF</a>
+                <a href="pages/crop.html">Crop PDF</a>
+                <a href="pages/watermark.html">Watermark PDF</a>
+                <a href="pages/page-numbers.html">Page Numbers</a>
+                <a href="pages/compress.html">Compress PDF</a>
+                <a href="pages/pdf-to-pdfa.html">PDF to PDF/A</a>
+                <a href="pages/html-to-pdf.html">HTML to PDF</a>
+                <a href="pages/jpg-to-pdf.html">JPG to PDF</a>
+                <a href="pages/pdf-to-jpg.html">PDF to JPG</a>
+            </div>
+        </details>
+    </header>
     <main>
     <h1>
-        <span class="logo-bubble"><img src="logo.png" alt="PDF merger logo"></span>
-        <span class="title-text">Free PDF Merger Online</span>
+        <span class="logo-bubble"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H6a2 2 0 0 0-2 2v3"/><path d="M4 15v3a2 2 0 0 0 2 2h2"/><path d="M16 3h2a2 2 0 0 1 2 2v3"/><path d="M20 15v3a2 2 0 0 1-2 2h-2"/><path d="M9 12h6"/><path d="m12 9 3 3-3 3"/></svg></span>
+        <span class="title-text">PDF Merger with ToC</span>
     </h1>
     <div class="stats" id="stats">
         <span id="file-count">0</span> PDFs ready to merge
@@ -95,17 +118,18 @@
 
     <div id="progress" class="progress"></div>
     <div id="result"></div>
-    <p class="docs-link"><a href="docs.html">Learn how to merge PDF files</a></p>
+    <p class="docs-link"><a href="pages/docs.html">Learn how to merge PDF files</a></p>
     </main>
 </div>
 
 <footer class="site-footer">
-    <p>© <span id="year"></span> PDF Merger. Free browser-based PDF tools.</p>
-    <nav aria-label="Footer navigation"><a href="docs.html">Documentation</a><a href="privacy.html">Privacy &amp; security</a><a href="https://github.com/dinushiTJ/Enhanced-PDF-Merger">GitHub</a></nav>
+    <p>© <span id="year"></span> PDF Pool. Free browser-based PDF tools.</p>
+    <nav aria-label="Footer navigation"><a href="pages/docs.html">Documentation</a><a href="pages/privacy.html">Privacy &amp; security</a><a href="https://github.com/dinushiTJ/Enhanced-PDF-Merger">GitHub</a></nav>
 </footer>
 
-<script src="script.js"></script>
-<script src="github-star.js" defer></script>
+<script src="js/image-to-pdf.js"></script>
+<script src="js/script.js"></script>
+<script src="js/github-star.js" defer></script>
 </body>
 
 </html>

@@ -95,7 +95,7 @@ dragDropArea.addEventListener('drop', (e) => {
     e.preventDefault();
     dragDropArea.classList.remove('dragover');
 
-    const files = Array.from(e.dataTransfer.files).filter(file => file.type === 'application/pdf');
+    const files = Array.from(e.dataTransfer.files).filter(file => file.type === 'application/pdf' || ImageToPdf.isSupportedImage(file));
     files.forEach(file => addPdfFile(file));
 });
 
@@ -106,7 +106,7 @@ dragDropArea.addEventListener('click', () => {
 addFileBtn.addEventListener('click', () => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.pdf';
+    input.accept = '.pdf,.jpg,.jpeg,.png,.webp,.gif,.bmp';
     input.multiple = true;
     input.onchange = (e) => {
         Array.from(e.target.files).forEach(file => addPdfFile(file));
@@ -128,13 +128,14 @@ tocToggle.addEventListener('change', () => {
     }
 });
 
-function addPdfFile(file) {
-    if (file.type !== 'application/pdf') {
-        alert('Please select only PDF files.');
+async function addPdfFile(file) {
+    const isImage = file.type !== 'application/pdf' && ImageToPdf.isSupportedImage(file);
+    if (file.type !== 'application/pdf' && !isImage) {
+        alert('Please select only PDF or image (JPG, PNG, WEBP, GIF, BMP) files.');
         return;
     }
 
-    // Basic file validation
+    // Basic file validation (against the original file, before any conversion)
     if (file.size === 0) {
         alert(`The file "${file.name}" appears to be empty.`);
         return;
@@ -149,6 +150,17 @@ function addPdfFile(file) {
     if (totalSize + file.size > MAX_TOTAL_SIZE) {
         alert('The combined input size cannot exceed 250MB. Remove a file or choose smaller PDFs.');
         return;
+    }
+
+    if (isImage) {
+        try {
+            const pdfBytes = await ImageToPdf.imageFileToPdfBytes(file);
+            const pdfName = file.name.replace(/\.\w+$/, '') + '.pdf';
+            file = new File([pdfBytes], pdfName, { type: 'application/pdf' });
+        } catch (e) {
+            alert(`Could not convert "${file.name}" to PDF: ${e.message}`);
+            return;
+        }
     }
 
     fileCounter++;

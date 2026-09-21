@@ -217,6 +217,91 @@ body::after {
     text-decoration: underline;
 }
 
+.rotate-choice {
+    width: auto;
+    height: auto;
+    border-radius: var(--pill);
+    padding: 10px 20px;
+    background: #ffffff;
+    color: var(--ink);
+    border: 2px solid var(--line);
+    font-weight: 800;
+}
+
+.rotate-choice.active {
+    background: var(--lav-deep);
+    color: #ffffff;
+    border-color: var(--lav-deep);
+    box-shadow: var(--shadow-pop);
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.tools-menu {
+    position: relative;
+}
+
+.tools-menu summary {
+    list-style: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 18px;
+    background: var(--lav-soft);
+    color: var(--lav-deep);
+    border: 2px solid var(--lav);
+    border-radius: var(--pill);
+    font-size: 14px;
+    font-weight: 800;
+}
+
+.tools-menu summary::-webkit-details-marker {
+    display: none;
+}
+
+.tools-menu[open] summary {
+    box-shadow: var(--shadow-soft);
+}
+
+.tools-menu-panel {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 40;
+    display: flex;
+    flex-direction: column;
+    min-width: 190px;
+    padding: 8px;
+    background: var(--card);
+    border: 2px solid var(--line);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-pop);
+}
+
+.tools-menu-panel a {
+    padding: 9px 12px;
+    border-radius: 12px;
+    color: var(--ink);
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.tools-menu-panel a:hover {
+    background: var(--pink-soft);
+    color: var(--pink-deep);
+}
+
+.tools-menu-panel a.current {
+    color: var(--mint-deep);
+    background: var(--mint-soft);
+}
+
 .site-header nav a,
 .site-footer nav a {
     color: var(--ink-soft);
@@ -275,9 +360,9 @@ h1 {
     width: 62px;
     height: 62px;
     border-radius: 22px;
-    background: linear-gradient(135deg, var(--pink-soft), var(--lav-soft));
+    background: linear-gradient(135deg, var(--sky-soft), var(--sky));
     color: var(--pink-deep);
-    box-shadow: 0 8px 18px rgba(240, 106, 158, 0.22), inset 0 -4px 0 rgba(187, 168, 255, 0.35);
+    box-shadow: 0 8px 18px rgba(106, 170, 240, 0.22), inset 0 -4px 0 rgba(168, 216, 255, 0.35);
     animation: bob 3.2s ease-in-out infinite;
 }
 
@@ -285,6 +370,12 @@ h1 {
     width: 52px;
     height: 52px;
     object-fit: contain;
+    display: block;
+}
+
+.logo-bubble svg {
+    width: 34px;
+    height: 34px;
     display: block;
 }
 
@@ -614,6 +705,15 @@ h1 {
     align-items: center;
     gap: 15px;
     margin-bottom: 19px;
+}
+
+.img-thumb {
+    width: 56px;
+    height: 56px;
+    object-fit: cover;
+    border-radius: 12px;
+    border: 2px solid var(--line);
+    flex-shrink: 0;
 }
 
 .file-name {
@@ -1709,6 +1809,7 @@ svg { flex-shrink: 0; }
     h1 { font-size: 1.9em; gap: 10px; }
     .logo-bubble { width: 50px; height: 50px; border-radius: 18px; }
     .logo-bubble img { width: 42px; height: 42px; }
+    .logo-bubble svg { width: 28px; height: 28px; }
     .tagline { font-size: 14.5px; }
     .pdf-item { padding: 20px 16px 20px 24px; }
     .clear-all-btn { flex: 1; justify-content: center; }
