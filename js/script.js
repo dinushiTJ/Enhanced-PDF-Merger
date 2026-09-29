@@ -136,7 +136,7 @@ function updateDriveStatus() {
     if (!driveStatus) return;
     driveStatus.textContent = driveFolder
         ? `The merged PDF can be saved back to ${driveFolder.name ? `“${driveFolder.name}”` : 'the same Drive folder'}.`
-        : '';
+        : (GoogleDrive.isConfigured() ? '' : DRIVE_SETUP_NOTE);
 }
 
 function rememberDriveFolder(folderId) {
@@ -151,11 +151,29 @@ function rememberDriveFolder(folderId) {
     });
 }
 
+// Local development (localhost, 127.0.0.1, file://): show the Drive box even
+// before setup, so it's clear what's missing. The public site keeps it hidden
+// until js/drive-config.js is filled in.
+const DRIVE_SETUP_NOTE = 'Setup needed: Google Drive isn\'t connected yet (local preview only — this box stays hidden on the public site until js/drive-config.js is filled in).';
+const isLocalDev = location.protocol === 'file:' || ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
+
+function explainDriveSetup() {
+    const origin = location.protocol === 'file:'
+        ? 'Open the site from a local web server (e.g. http://localhost:8765) instead of a file — Google sign-in doesn\'t work from file:// pages.'
+        : `Add ${location.origin} as an authorized JavaScript origin.`;
+    showToast('Google Drive isn\'t connected yet', 'error',
+        `Fill in js/drive-config.js with your Google Cloud client ID, API key and project number (README → Google Drive setup). ${origin}`);
+}
+
 async function addFromDrive() {
     const link = driveLinkInput.value.trim();
     const target = link ? GoogleDrive.parseDriveLink(link) : {};
     if (!target) {
         showToast('That isn\'t a Google Drive link', 'error', 'Paste a link to a Drive folder or file, or leave the box empty to browse your Drive.');
+        return;
+    }
+    if (!GoogleDrive.isConfigured()) {
+        explainDriveSetup();
         return;
     }
     driveBtn.disabled = true;
@@ -219,15 +237,47 @@ function renderDriveSave(blob, filename) {
     });
 }
 
-if (GoogleDrive.isConfigured() && drivePanel) {
+const driveAvailable = Boolean(drivePanel) && (GoogleDrive.isConfigured() || isLocalDev);
+
+if (driveAvailable) {
     drivePanel.hidden = false;
+    updateDriveStatus();
     driveBtn.addEventListener('click', addFromDrive);
     driveBtn.addEventListener('pointerenter', GoogleDrive.preload, { once: true });
     driveBtn.addEventListener('focus', GoogleDrive.preload, { once: true });
     driveLinkInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') { e.preventDefault(); addFromDrive(); }
     });
+    // Pasting straight into the box starts right away.
+    driveLinkInput.addEventListener('paste', (e) => {
+        const text = e.clipboardData && e.clipboardData.getData('text');
+        if (text && GoogleDrive.parseDriveLink(text)) {
+            e.preventDefault();
+            driveLinkInput.value = text.trim();
+            addFromDrive();
+        }
+    });
 }
+
+// Paste anywhere on the page: a Drive link opens the Drive picker, and
+// copied files (e.g. from Finder or Explorer) are added like dropped ones.
+document.addEventListener('paste', (e) => {
+    const target = e.target;
+    if (target && target !== document.body && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) return;
+    const data = e.clipboardData;
+    if (!data) return;
+    if (data.files && data.files.length) {
+        e.preventDefault();
+        addFiles(Array.from(data.files));
+        return;
+    }
+    const text = data.getData('text');
+    if (driveAvailable && text && GoogleDrive.parseDriveLink(text)) {
+        e.preventDefault();
+        driveLinkInput.value = text.trim();
+        addFromDrive();
+    }
+});
 
 clearAllBtn.addEventListener('click', () => {
     if (confirm('Are you sure you want to remove all PDF files?')) {
