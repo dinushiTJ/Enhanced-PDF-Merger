@@ -28,9 +28,16 @@ const GoogleDrive = (() => {
     let tokenClient = null;
     let scriptsPromise = null;
 
+    // Full setup: Google sign-in (picker, private files, saving back to Drive).
     function isConfigured() {
         return typeof DRIVE_CONFIG !== 'undefined' &&
             Boolean(DRIVE_CONFIG.clientId && DRIVE_CONFIG.apiKey && DRIVE_CONFIG.appId);
+    }
+
+    // Minimal setup: an API key alone reads folders and files shared as
+    // "Anyone with the link", with no sign-in.
+    function hasApiKey() {
+        return typeof DRIVE_CONFIG !== 'undefined' && Boolean(DRIVE_CONFIG.apiKey);
     }
 
     // Accepts folder links, file links, open?id= links and Docs/Sheets/Slides
@@ -45,12 +52,14 @@ const GoogleDrive = (() => {
             return null;
         }
         if (!/(^|\.)google\.com$/.test(url.hostname)) return null;
+        // Older shared links carry a resource key that Drive requires for anonymous access.
+        const resourceKey = url.searchParams.get('resourcekey') || null;
         const folder = /\/folders\/([\w-]{10,})/.exec(url.pathname);
-        if (folder) return { folderId: folder[1] };
+        if (folder) return { folderId: folder[1], resourceKey };
         const file = /\/(?:file|document|spreadsheets|presentation|drawings)\/d\/([\w-]{10,})/.exec(url.pathname);
-        if (file) return { fileId: file[1] };
+        if (file) return { fileId: file[1], resourceKey };
         const id = url.searchParams.get('id');
-        if (id && /^[\w-]{10,}$/.test(id)) return { fileId: id };
+        if (id && /^[\w-]{10,}$/.test(id)) return { fileId: id, resourceKey };
         return null;
     }
 
@@ -257,7 +266,68 @@ const GoogleDrive = (() => {
         return upload(bytes, name, chosen.id);
     }
 
+    // ---- Public links ("Anyone with the link"), API key only, no sign-in ----
+
+    async function publicFetch(path, { id, resourceKey } = {}) {
+        const url = `${API}/${path}${path.includes('?') ? '&' : '?'}key=${encodeURIComponent(DRIVE_CONFIG.apiKey)}&supportsAllDrives=true`;
+        const headers = resourceKey ? { 'X-Goog-Drive-Resource-Keys': `${id}/${resourceKey}` } : {};
+        const res = await fetch(url, { headers });
+        if (!res.ok) {
+            let reason = '';
+            try { reason = (await res.json()).error.message; } catch (e) { /* not JSON */ }
+            const error = new Error(res.status === 404
+                ? 'Not found, or not shared as "Anyone with the link".'
+                : (reason || `Google Drive returned an error (${res.status}).`));
+            error.status = res.status;
+            throw error;
+        }
+        return res;
+    }
+
+    // Supported files directly inside a public folder, sorted by name.
+    async function listPublicFolder(folderId, resourceKey = null) {
+        const meta = await (await publicFetch(`files/${encodeURIComponent(folderId)}?fields=id,name,mimeType`, { id: folderId, resourceKey })).json();
+        if (meta.mimeType !== FOLDER_TYPE) throw new Error('That link is a file, not a folder.');
+        const files = [];
+        let pageToken = '';
+        do {
+            const q = encodeURIComponent(`'${folderId}' in parents and trashed = false`);
+            const page = await (await publicFetch(`files?q=${q}&orderBy=name_natural&pageSize=1000&includeItemsFromAllDrives=true` +
+                `&fields=${encodeURIComponent('nextPageToken,files(id,name,mimeType,resourceKey)')}` +
+                (pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ''), { id: folderId, resourceKey })).json();
+            files.push(...(page.files || []));
+            pageToken = page.nextPageToken || '';
+        } while (pageToken);
+        return {
+            name: meta.name,
+            files: files.filter((f) => PICKABLE_TYPES.includes(f.mimeType))
+                .map((f) => ({ id: f.id, name: f.name, mimeType: f.mimeType, resourceKey: f.resourceKey || null, parentId: folderId })),
+            skipped: files.filter((f) => !PICKABLE_TYPES.includes(f.mimeType)).length
+        };
+    }
+
+    async function getPublicFile(fileId, resourceKey = null) {
+        const meta = await (await publicFetch(`files/${encodeURIComponent(fileId)}?fields=id,name,mimeType,parents,resourceKey`, { id: fileId, resourceKey })).json();
+        return { id: meta.id, name: meta.name, mimeType: meta.mimeType, resourceKey: meta.resourceKey || resourceKey, parentId: (meta.parents && meta.parents[0]) || null };
+    }
+
+    async function downloadPublic(doc) {
+        const opts = { id: doc.id, resourceKey: doc.resourceKey };
+        if (GOOGLE_EXPORTS[doc.mimeType]) {
+            const res = await publicFetch(`files/${encodeURIComponent(doc.id)}/export?mimeType=application%2Fpdf`, opts);
+            return new File([await res.blob()], `${doc.name}.pdf`, { type: 'application/pdf' });
+        }
+        const res = await publicFetch(`files/${encodeURIComponent(doc.id)}?alt=media`, opts);
+        return new File([await res.blob()], doc.name, { type: doc.mimeType || res.headers.get('Content-Type') || '' });
+    }
+
     async function folderName(folderId) {
+        if (hasApiKey()) {
+            try {
+                return (await (await publicFetch(`files/${encodeURIComponent(folderId)}?fields=name`)).json()).name;
+            } catch (e) { /* private folder: try signed in below */ }
+        }
+        if (!isConfigured() || !token) return null;
         try {
             const res = await driveFetch(`${API}/files/${encodeURIComponent(folderId)}?fields=name&supportsAllDrives=true`);
             return (await res.json()).name;
@@ -277,5 +347,8 @@ const GoogleDrive = (() => {
         if (isConfigured()) loadScripts().catch(() => {});
     }
 
-    return { isConfigured, parseDriveLink, parseOpenState, preload, connect, installOpenWith, pick, getFile, download, saveToFolder, folderName, disconnect };
+    return {
+        isConfigured, hasApiKey, parseDriveLink, parseOpenState, preload, connect, installOpenWith, pick, getFile, download,
+        listPublicFolder, getPublicFile, downloadPublic, saveToFolder, folderName, disconnect, PICKABLE_TYPES
+    };
 })();

@@ -113,7 +113,19 @@ CDN dependencies (no local files):
 * See [privacy.html](pages/privacy.html) for the full, user-facing security overview
 
 ## Google Drive setup
-The merger can add files straight from Google Drive and save the merged PDF back into the same folder. It stays hidden until `js/drive-config.js` is filled in. One-time setup (about 10 minutes, free):
+The merger can add files straight from Google Drive and save the merged PDF back into the same folder. It stays hidden until `js/drive-config.js` is filled in. Google doesn't let a web page read Drive anonymously, so at least an API key is needed — but visitors never set anything up.
+
+### Quick: shared links with no sign-in (API key only, ~2 minutes)
+Paste any folder or file link shared as **"Anyone with the link"** and its PDFs, Word files, images and Google Docs are added — no Google login.
+
+1. [Google Cloud Console](https://console.cloud.google.com/) → create a project (e.g. "PDF Pool").
+2. **APIs & Services → Library** → enable **Google Drive API**.
+3. **Credentials → Create credentials → API key**. Edit it: **Application restrictions** → *Websites* → `https://dinushitj.github.io/*` (and `http://localhost:8765/*` for testing); **API restrictions** → *Google Drive API* (add *Google Picker API* too if you do the full setup).
+4. Put it in `js/drive-config.js` as `apiKey: 'AIza…'` (leave the other two empty).
+
+Saving the merged PDF back to Drive, private files and "Open with" need the full setup below.
+
+### Full: sign-in, save back to Drive, private files (~10 minutes)
 
 1. Open [Google Cloud Console](https://console.cloud.google.com/) and create a project (e.g. "PDF Pool").
 2. **APIs & Services → Library**: enable **Google Drive API** and **Google Picker API**.

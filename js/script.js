@@ -134,14 +134,23 @@ const driveStatus = document.getElementById('driveStatus');
 
 function updateDriveStatus() {
     if (!driveStatus) return;
-    driveStatus.textContent = driveFolder
-        ? `The merged PDF can be saved back to ${driveFolder.name ? `“${driveFolder.name}”` : 'the same Drive folder'}.`
-        : (GoogleDrive.isConfigured() ? '' : DRIVE_SETUP_NOTE);
+    const where = driveFolder && driveFolder.name ? `“${driveFolder.name}”` : 'the same Drive folder';
+    if (driveFolder) {
+        driveStatus.textContent = GoogleDrive.isConfigured()
+            ? `The merged PDF can be saved back to ${where}.`
+            : `Files added from ${where}. Download the merged PDF below.`;
+    } else {
+        driveStatus.textContent = GoogleDrive.hasApiKey() ? '' : DRIVE_SETUP_NOTE;
+    }
 }
 
-function rememberDriveFolder(folderId) {
+function rememberDriveFolder(folderId, knownName = null) {
     if (!folderId || driveFolder) return;
-    driveFolder = { id: folderId, name: null };
+    driveFolder = { id: folderId, name: knownName };
+    if (knownName) {
+        updateDriveStatus();
+        return;
+    }
     updateDriveStatus();
     GoogleDrive.folderName(folderId).then((name) => {
         if (driveFolder && driveFolder.id === folderId && name) {
@@ -154,7 +163,7 @@ function rememberDriveFolder(folderId) {
 // Local development (localhost, 127.0.0.1, file://): show the Drive box even
 // before setup, so it's clear what's missing. The public site keeps it hidden
 // until js/drive-config.js is filled in.
-const DRIVE_SETUP_NOTE = 'Setup needed: Google Drive isn\'t connected yet (local preview only — this box stays hidden on the public site until js/drive-config.js is filled in).';
+const DRIVE_SETUP_NOTE = 'Setup needed: add a Google Cloud API key to js/drive-config.js (local preview only — this box stays hidden on the public site until it\'s set).';
 const isLocalDev = location.protocol === 'file:' || ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
 
 function explainDriveSetup() {
@@ -162,7 +171,7 @@ function explainDriveSetup() {
         ? 'Open the site from a local web server (e.g. http://localhost:8765) instead of a file — Google sign-in doesn\'t work from file:// pages.'
         : `Add ${location.origin} as an authorized JavaScript origin.`;
     showToast('Google Drive isn\'t connected yet', 'error',
-        `Fill in js/drive-config.js with your Google Cloud client ID, API key and project number (README → Google Drive setup). ${origin}`);
+        `Add a Google Cloud API key to js/drive-config.js to open shared Drive links without signing in (README → Google Drive setup). For private files and saving back to Drive, also add the client ID and project number. ${origin}`);
 }
 
 // Files sent by Google Drive's "Open with → PDF Pool" (see README).
@@ -214,6 +223,49 @@ async function openFromDrive() {
     }
 }
 
+// Download Drive items one by one (keeping order), then add them like
+// local files. download is GoogleDrive.download (signed in) or downloadPublic.
+async function addDriveDocs(docs, download, toast) {
+    const files = [];
+    for (const doc of docs) {
+        try {
+            files.push(await download(doc));
+        } catch (e) {
+            showToast(`Not added: ${doc.name}`, 'error', `Couldn't download it from Google Drive: ${e.message}`);
+        }
+    }
+    toast.dismiss();
+    await addFiles(files);
+}
+
+// A link shared as "Anyone with the link": read it with the API key alone,
+// no sign-in. Throws (with .status) if Drive refuses, e.g. a private file.
+async function addPublicDrive(target) {
+    const toast = showToast('Reading the Google Drive link…', 'info');
+    try {
+        if (target.folderId) {
+            const folder = await GoogleDrive.listPublicFolder(target.folderId, target.resourceKey);
+            if (folder.files.length === 0) {
+                toast.update(`No PDF, Word or image files in “${folder.name}”`, 'error', folder.skipped
+                    ? `${folder.skipped} other file${folder.skipped === 1 ? ' was' : 's were'} skipped (folders and unsupported types aren't added).`
+                    : 'The folder is empty, or the files inside aren\'t shared as "Anyone with the link".');
+                return;
+            }
+            rememberDriveFolder(target.folderId, folder.name);
+            toast.update(`Adding ${folder.files.length} file${folder.files.length === 1 ? '' : 's'} from “${folder.name}”…`, 'info');
+            await addDriveDocs(folder.files, GoogleDrive.downloadPublic, toast);
+        } else {
+            const doc = await GoogleDrive.getPublicFile(target.fileId, target.resourceKey);
+            rememberDriveFolder(doc.parentId);
+            toast.update(`Adding ${doc.name} from Google Drive…`, 'info');
+            await addDriveDocs([doc], GoogleDrive.downloadPublic, toast);
+        }
+    } catch (e) {
+        toast.dismiss();
+        throw e;
+    }
+}
+
 async function addFromDrive() {
     if (driveOpenState && GoogleDrive.isConfigured()) return openFromDrive();
     const link = driveLinkInput.value.trim();
@@ -222,27 +274,37 @@ async function addFromDrive() {
         showToast('That isn\'t a Google Drive link', 'error', 'Paste a link to a Drive folder or file, or leave the box empty to browse your Drive.');
         return;
     }
-    if (!GoogleDrive.isConfigured()) {
+    if (!GoogleDrive.hasApiKey()) {
         explainDriveSetup();
+        return;
+    }
+    if (!link && !GoogleDrive.isConfigured()) {
+        showToast('Paste a Google Drive link', 'error', 'Paste a link to a folder or file shared as "Anyone with the link".');
         return;
     }
     driveBtn.disabled = true;
     try {
+        // Shared links work without signing in; private ones fall back to
+        // Google sign-in and the picker when that's set up.
+        if (link) {
+            try {
+                await addPublicDrive(target);
+                return;
+            } catch (e) {
+                // Without sign-in there's nothing else to try; with it, any
+                // refusal (private file, restricted key…) falls back to the picker.
+                if (!GoogleDrive.isConfigured()) {
+                    throw new Error(e.status === 404 || e.status === 403
+                        ? 'That link isn\'t shared publicly. In Google Drive, choose Share → General access → "Anyone with the link", then paste it again.'
+                        : e.message);
+                }
+            }
+        }
         const docs = await GoogleDrive.pick(target);
         if (docs.length === 0) return;
         rememberDriveFolder(target.folderId || docs[0].parentId);
-
         const toast = showToast(`Adding ${docs.length} file${docs.length === 1 ? '' : 's'} from Google Drive…`, 'info');
-        const files = [];
-        for (const doc of docs) {
-            try {
-                files.push(await GoogleDrive.download(doc));
-            } catch (e) {
-                showToast(`Not added: ${doc.name}`, 'error', `Couldn't download it from Google Drive: ${e.message}`);
-            }
-        }
-        toast.dismiss();
-        await addFiles(files);
+        await addDriveDocs(docs, GoogleDrive.download, toast);
     } catch (e) {
         showToast('Google Drive', 'error', e.message);
     } finally {
@@ -287,7 +349,7 @@ function renderDriveSave(blob, filename) {
     });
 }
 
-const driveAvailable = Boolean(drivePanel) && (GoogleDrive.isConfigured() || isLocalDev);
+const driveAvailable = Boolean(drivePanel) && (GoogleDrive.hasApiKey() || isLocalDev);
 
 if (driveAvailable) {
     drivePanel.hidden = false;
@@ -295,6 +357,7 @@ if (driveAvailable) {
     showDriveOpenState();
     if (driveOpenState) drivePanel.scrollIntoView({ block: 'center' });
     driveBtn.addEventListener('click', addFromDrive);
+    driveInstallBtn.hidden = !GoogleDrive.isConfigured() && !isLocalDev;
     driveInstallBtn.addEventListener('click', async () => {
         if (!GoogleDrive.isConfigured()) {
             explainDriveSetup();
