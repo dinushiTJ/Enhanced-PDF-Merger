@@ -136,69 +136,139 @@ tocToggle.addEventListener('change', () => {
     }
 });
 
+// ---- Toast notifications ----
+// Small corner messages confirming each added file (or why it was refused),
+// so it's easy to check everything went in without blocking pop-ups.
+
+const TOAST_ICONS = {
+    success: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+    error: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5"/><path d="M12 16.5h.01"/></svg>',
+    info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.2-8.56"/></svg>'
+};
+const TOAST_DURATION = { success: 4000, info: 0, error: 9000 }; // 0 = stays until updated
+const MAX_TOASTS = 5;
+let toastStack = null;
+
+function showToast(message, type = 'success', detail = '') {
+    if (!toastStack) {
+        toastStack = document.createElement('div');
+        toastStack.className = 'toast-stack';
+        toastStack.setAttribute('role', 'status');
+        toastStack.setAttribute('aria-live', 'polite');
+        document.body.appendChild(toastStack);
+    }
+    const el = document.createElement('div');
+    const icon = document.createElement('span');
+    const body = document.createElement('div');
+    const close = document.createElement('button');
+    icon.className = 'toast-icon';
+    body.className = 'toast-body';
+    close.className = 'toast-close';
+    close.type = 'button';
+    close.setAttribute('aria-label', 'Dismiss');
+    close.textContent = '×';
+    el.append(icon, body, close);
+
+    let timer = null;
+    const dismiss = () => {
+        clearTimeout(timer);
+        el.classList.add('leaving');
+        setTimeout(() => el.remove(), 200);
+    };
+    const update = (msg, kind = 'success', extra = '') => {
+        el.className = `toast toast-${kind}`;
+        icon.innerHTML = TOAST_ICONS[kind];
+        body.textContent = msg;
+        if (extra) {
+            const small = document.createElement('span');
+            small.className = 'toast-detail';
+            small.textContent = extra;
+            body.appendChild(small);
+        }
+        clearTimeout(timer);
+        if (TOAST_DURATION[kind]) timer = setTimeout(dismiss, TOAST_DURATION[kind]);
+    };
+    close.addEventListener('click', dismiss);
+    update(message, type, detail);
+
+    toastStack.appendChild(el);
+    while (toastStack.children.length > MAX_TOASTS) toastStack.firstElementChild.remove();
+    return { update, dismiss };
+}
+
+function pluralPages(n) {
+    return `${n} page${n === 1 ? '' : 's'}`;
+}
+
 async function addPdfFile(file) {
     const isPdf = file.type === 'application/pdf' || (!file.type && /\.pdf$/i.test(file.name));
     const isWord = !isPdf && DocxToPdf.isDocx(file);
     const isImage = !isPdf && !isWord && ImageToPdf.isSupportedImage(file);
+    const refuse = (reason) => showToast(`Not added: ${file.name}`, 'error', reason);
+
     if (!isPdf && !isWord && DocxToPdf.isLegacyDoc(file)) {
-        alert(`"${file.name}" is an older Word (.doc) file, which can't be converted in the browser. Open it in Word and use "Save As" → .docx (or PDF), then add it again.`);
+        refuse('Older Word (.doc) files can\'t be converted in the browser. Open it in Word, choose Save As → .docx (or PDF), then add it again.');
         return;
     }
     if (!isPdf && !isWord && !isImage) {
-        alert('Please select only PDF, Word (.docx) or image (JPG, PNG, WEBP, GIF, BMP) files.');
+        refuse('Only PDF, Word (.docx) and image (JPG, PNG, WEBP, GIF, BMP) files can be added.');
         return;
     }
 
     // Basic file validation (against the original file, before any conversion)
     if (file.size === 0) {
-        alert(`The file "${file.name}" appears to be empty.`);
+        refuse('The file appears to be empty.');
         return;
     }
 
     if (file.size > MAX_FILE_SIZE) { // 100MB limit
-        alert(`The file "${file.name}" is too large (over 100MB). Please use a smaller file.`);
+        refuse('The file is over 100MB. Please use a smaller file.');
         return;
     }
 
     const totalSize = Array.from(pdfFiles.values()).reduce((sum, data) => sum + data.file.size, 0);
     if (totalSize + file.size > MAX_TOTAL_SIZE) {
-        alert('The combined input size cannot exceed 250MB. Remove a file or choose smaller PDFs.');
+        refuse('The combined size of all files can\'t exceed 250MB. Remove a file or choose smaller ones.');
         return;
     }
+
+    const originalName = file.name;
+    let added = `Added ${originalName}`;
+    let addedDetail = '';
 
     if (isImage) {
         try {
             const pdfBytes = await ImageToPdf.imageFileToPdfBytes(file);
             const pdfName = file.name.replace(/\.\w+$/, '') + '.pdf';
             file = new File([pdfBytes], pdfName, { type: 'application/pdf' });
+            addedDetail = 'Image converted to a 1-page PDF';
         } catch (e) {
-            alert(`Could not convert "${file.name}" to PDF: ${e.message}`);
+            refuse(`Could not convert the image to PDF: ${e.message}`);
             return;
         }
     }
 
     if (isWord) {
-        const progress = document.getElementById('progress');
-        const showStatus = !mergeInProgress;
-        if (showStatus) {
-            progress.textContent = `Converting "${file.name}" to PDF...`;
-            progress.style.display = 'block';
-        }
+        const toast = showToast(`Converting ${originalName}…`, 'info', 'Word → PDF, this can take a few seconds');
         conversionsPending++;
         updateUI();
         try {
-            const pdfBytes = await DocxToPdf.docxFileToPdfBytes(file);
+            const { bytes, pageCount } = await DocxToPdf.docxFileToPdf(file);
             const pdfName = file.name.replace(/\.docx$/i, '') + '.pdf';
-            file = new File([pdfBytes], pdfName, { type: 'application/pdf' });
+            file = new File([bytes], pdfName, { type: 'application/pdf' });
+            added = `Converted ${originalName}`;
+            addedDetail = `Word → PDF, ${pluralPages(pageCount)}`;
+            toast.dismiss();
         } catch (e) {
-            alert(`Could not convert "${file.name}" to PDF: ${e.message}`);
+            toast.update(`Not added: ${originalName}`, 'error', `Could not convert to PDF: ${e.message}`);
             return;
         } finally {
             conversionsPending--;
             updateUI();
-            if (showStatus && !mergeInProgress) progress.style.display = 'none';
         }
     }
+
+    showToast(added, 'success', addedDetail);
 
     fileCounter++;
     const fileId = `pdf_${fileCounter}`;

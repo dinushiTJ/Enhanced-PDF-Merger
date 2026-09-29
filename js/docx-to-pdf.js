@@ -138,21 +138,6 @@ const DocxToPdf = (() => {
         }
     }
 
-    // Word sizes table columns from the grid widths saved in the file, while
-    // the browser's automatic table layout treats them as hints and
-    // rebalances columns around their content. Use the saved widths as-is.
-    function useSavedColumnWidths(root) {
-        for (const table of root.querySelectorAll('table')) {
-            const cols = Array.from(table.querySelectorAll(':scope > colgroup > col'));
-            if (cols.length === 0 || !cols.every((col) => parseFloat(col.style.width) > 0)) continue;
-            table.style.tableLayout = 'fixed';
-            if (!table.style.width) {
-                const total = cols.reduce((sum, col) => sum + parseFloat(col.style.width), 0);
-                table.style.width = `${total}${cols[0].style.width.replace(/[\d.]+/, '')}`;
-            }
-        }
-    }
-
     function pageHeightOf(section) {
         const minHeight = parseFloat(getComputedStyle(section).minHeight);
         return minHeight > 0 ? minHeight : Math.round(section.offsetWidth * 1.414);
@@ -220,8 +205,105 @@ const DocxToPdf = (() => {
     const fontBytesCache = new Map();   // face key -> Promise<ArrayBuffer>
     const fontMetricsCache = new Map(); // face key -> fontkit font
 
+    // ---- List markers ----
+
+    // docx-preview draws list numbers and bullets with CSS counters in
+    // ::before rules. html2canvas misplaces generated content, so evaluate the
+    // counters the way the browser does and swap each marker for a real
+    // element with the pseudo-element's exact computed style.
+    const MARKER_ATTR = 'data-docx-marker';
+
+    function formatCounter(value, style) {
+        const alpha = (n) => { let s = ''; for (; n > 0; n = Math.floor((n - 1) / 26)) s = String.fromCharCode(97 + ((n - 1) % 26)) + s; return s; };
+        const roman = (n) => {
+            if (n <= 0 || n >= 4000) return String(n);
+            const table = [[1000, 'm'], [900, 'cm'], [500, 'd'], [400, 'cd'], [100, 'c'], [90, 'xc'], [50, 'l'], [40, 'xl'], [10, 'x'], [9, 'ix'], [5, 'v'], [4, 'iv'], [1, 'i']];
+            let s = '';
+            for (const [v, r] of table) while (n >= v) { s += r; n -= v; }
+            return s;
+        };
+        switch (style) {
+            case 'lower-alpha': case 'lower-latin': return alpha(value);
+            case 'upper-alpha': case 'upper-latin': return alpha(value).toUpperCase();
+            case 'lower-roman': return roman(value);
+            case 'upper-roman': return roman(value).toUpperCase();
+            case 'decimal-leading-zero': return (value < 10 && value >= 0 ? '0' : '') + value;
+            case 'none': return '';
+            case 'disc': return '•';
+            case 'circle': return '◦';
+            case 'square': return '▪';
+            default: return String(value);
+        }
+    }
+
+    function unescapeCss(text) {
+        return text.replace(/\\([0-9a-fA-F]{1,6})\s?|\\(.)/g, (_, hex, ch) => hex ? String.fromCodePoint(parseInt(hex, 16)) : ch);
+    }
+
+    // "name 3 other 0" -> [["name", 3], ["other", 0]]
+    function counterPairs(value, fallback) {
+        if (!value || value === 'none') return [];
+        const tokens = value.trim().split(/\s+/);
+        const pairs = [];
+        for (let i = 0; i < tokens.length; i++) {
+            const n = Number(tokens[i + 1]);
+            if (Number.isFinite(n)) { pairs.push([tokens[i], n]); i++; } else pairs.push([tokens[i], fallback]);
+        }
+        return pairs;
+    }
+
+    function applyCounters(style, counters) {
+        for (const [name, n] of counterPairs(style.counterReset, 0)) counters.set(name, n);
+        for (const [name, n] of counterPairs(style.counterSet, 0)) counters.set(name, n);
+        for (const [name, n] of counterPairs(style.counterIncrement, 1)) counters.set(name, (counters.get(name) || 0) + n);
+    }
+
+    function resolveContent(content, counters) {
+        let text = '';
+        const token = /"((?:[^"\\]|\\.)*)"|counter\(\s*([^,)\s]+)\s*(?:,\s*([^)\s]+))?\s*\)/g;
+        for (const m of content.matchAll(token)) {
+            text += m[1] !== undefined ? unescapeCss(m[1]) : formatCounter(counters.get(m[2]) || 0, m[3] || 'decimal');
+        }
+        return text;
+    }
+
+    const SKIP_MARKER_PROPS = /^(content|counter-(reset|set|increment))$/;
+
+    function materializeMarkers(root) {
+        const counters = new Map();
+        const markers = [];
+        for (const el of root.querySelectorAll('*')) {
+            if (el.closest('svg')) continue;
+            applyCounters(getComputedStyle(el), counters);
+            const before = getComputedStyle(el, '::before');
+            if (!before.content || before.content === 'none' || before.content === 'normal') continue;
+            applyCounters(before, counters);
+            if (/url\(|attr\(|counters\(/.test(before.content)) continue; // leave anything unusual alone
+            markers.push([el, resolveContent(before.content, counters), before]);
+        }
+        // Build the replacements only after every counter is evaluated, so the
+        // inserted elements can't disturb the walk above.
+        for (const [el, text, before] of markers) {
+            const marker = document.createElement('docx-marker');
+            for (const prop of before) {
+                if (!SKIP_MARKER_PROPS.test(prop)) marker.style.setProperty(prop, before.getPropertyValue(prop));
+            }
+            marker.textContent = text;
+            el.setAttribute(MARKER_ATTR, '');
+            el.prepend(marker);
+        }
+        const style = document.createElement('style');
+        style.textContent = `[${MARKER_ATTR}]::before{content:none!important}`;
+        root.appendChild(style);
+    }
+
+    // Symbol/dingbat fonts map characters to private code points that the
+    // substitute fonts don't have, so they keep their own font.
+    const SYMBOL_FONT = /^(symbol|wingdings|webdings|zapf ?dingbats|noto sans symbols|segoe ui symbol|mt extra|marlett)/;
+
     function familyFor(fontFamily) {
         const names = fontFamily.split(',').map((n) => n.trim().replace(/^["']|["']$/g, '').toLowerCase());
+        if (names[0] && SYMBOL_FONT.test(names[0])) return null;
         for (const name of names) {
             if (name.startsWith(FACE_PREFIX)) return name.slice(FACE_PREFIX.length);
             for (const [pattern, family] of FAMILY_MAP) {
@@ -305,6 +387,7 @@ const DocxToPdf = (() => {
             if (!hasText) continue;
             const style = getComputedStyle(el);
             const family = familyFor(style.fontFamily);
+            if (!family) continue;
             needed.add(`${family}-${variantFor(style)}`);
             targets.push([el, family]);
         }
@@ -818,7 +901,7 @@ const DocxToPdf = (() => {
 
             // Lay text out with the fonts that will be embedded, then wait for
             // images so pages are measured correctly.
-            useSavedColumnWidths(host);
+            materializeMarkers(host);
             const textLayer = await applyDocumentFonts(host);
             if (document.fonts && document.fonts.ready) await document.fonts.ready;
             fixImageTypes(host);
@@ -857,18 +940,18 @@ const DocxToPdf = (() => {
                     page.drawImage(jpg, { x: 0, y: 0, width: widthPt, height: heightPt });
                 }
             }
-            return pdfDoc.save();
+            return { bytes: await pdfDoc.save(), pageCount: pdfDoc.getPageCount() };
         } finally {
             host.remove();
         }
     }
 
-    // One .docx -> PDF bytes, one PDF page per Word page.
-    function docxFileToPdfBytes(file) {
+    // One .docx -> { bytes, pageCount }, one PDF page per Word page.
+    function docxFileToPdf(file) {
         const job = queue.then(() => convert(file));
         queue = job.catch(() => {});
         return job;
     }
 
-    return { isDocx, isLegacyDoc, docxFileToPdfBytes };
+    return { isDocx, isLegacyDoc, docxFileToPdf };
 })();

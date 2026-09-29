@@ -90,12 +90,13 @@ CDN dependencies (no local files):
 ├── tsparticles-confetti # Success celebration animation
 ├── html2canvas          # HTML to PDF, and Word files in the merger - DOM-to-canvas rasterization
 ├── jszip + docx-preview # Merger only, loaded when a Word file is added - .docx layout
+├── @cantoo/fontkit      # Merger only, loaded when a Word file is added - embeds fonts as real PDF text
 └── jsPDF                # HTML to PDF only - assembling the final PDF
 ```
 
 ## Technical Details
 * **Built with**: HTML5, CSS3, JavaScript ES6+, no build step or framework
-* **Libraries (loaded from CDN, internet required)**: `@cantoo/pdf-lib` (a pdf-lib fork with decryption support), `pdf.js`, `tsparticles-confetti`, and — only on the HTML to PDF page — `html2canvas` and `jsPDF`. The merger loads `jszip`, `docx-preview` and `html2canvas` on demand, only when a Word file is added
+* **Libraries (loaded from CDN, internet required)**: `@cantoo/pdf-lib` (a pdf-lib fork with decryption support), `pdf.js`, `tsparticles-confetti`, and — only on the HTML to PDF page — `html2canvas` and `jsPDF`. The merger loads `jszip`, `docx-preview`, `html2canvas` and `@cantoo/fontkit` on demand, only when a Word file is added, plus open fonts (Carlito, Liberation Sans, Tinos, Cousine, Caladea) from jsDelivr
 * **File limit**: 100MB per file (browser memory dependent)
 * **Supported**: Standard PDF files, including encrypted ones (RC4/AES-128/AES-256 password security). Certificate-based encryption isn't supported
 * **Processing**: Client-side only, no server uploads required
@@ -104,7 +105,7 @@ CDN dependencies (no local files):
 * **Content Security Policy**: every page ships a strict CSP; only the exact CDN hosts and pinned versions each tool needs are allowlisted
 * **Subresource Integrity**: every CDN script is loaded with a SHA-384 integrity hash
 * **HTML to PDF sandboxing**: the uploaded `.html` file is rendered inside a hidden `<iframe sandbox="allow-same-origin">` (no `allow-scripts`), and `<script>` tags/inline event handlers are stripped before rendering as a second layer of defense. External resources referenced by the file (images, fonts, stylesheets) are not fetched
-* **Word to PDF in the merger**: `.docx` files are laid out with `docx-preview` and each page is captured as a high-resolution image, so the result looks like the document but its text isn't selectable or searchable. Layout is close to Word's but not identical (complex floating shapes, SmartArt and some fonts may differ). Legacy binary `.doc` files aren't supported. Re-save them as `.docx` first
+* **Word to PDF in the merger**: `.docx` files are laid out with `docx-preview`, then each page is built from real, selectable PDF text, PNG/JPEG pictures embedded at full resolution, and a rendered background for borders, shading and shapes. Word fonts are replaced by metric-compatible open fonts (Calibri → Carlito, Arial → Liberation Sans, Times New Roman → Tinos, Courier New → Cousine, Cambria → Caladea), so line breaks and page counts stay close to Word's. Text in other fonts or scripts the open fonts don't cover (and everything, if the fonts can't be downloaded) falls back to the rendered image. Complex floating shapes and SmartArt may differ. Legacy binary `.doc` files aren't supported. Re-save them as `.docx` first
 * **Compress PDF trade-off**: compression works by re-rendering each page as a JPEG image, which can shrink scanned/image-heavy PDFs significantly but makes the resulting text non-selectable and non-searchable; it is not a good fit for text-only documents
 * **PDF to PDF/A is best-effort**: it adds PDF/A identification metadata (XMP) but does not guarantee ISO 19005 conformance and has not been checked against official validators (e.g. veraPDF)
 * See [privacy.html](pages/privacy.html) for the full, user-facing security overview

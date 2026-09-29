@@ -1797,8 +1797,68 @@ svg { flex-shrink: 0; }
     display: none;
 }
 
+/* ---- Toast notifications (file added / converted / rejected) ---- */
+.toast-stack {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: min(380px, calc(100vw - 32px));
+    pointer-events: none;
+}
+
+.toast {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 12px 12px 14px;
+    border-radius: var(--radius-sm);
+    border: 2px solid var(--line);
+    background: var(--card);
+    color: var(--ink);
+    box-shadow: var(--shadow-soft);
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.4;
+    pointer-events: auto;
+    animation: toast-in 0.2s ease-out;
+}
+
+.toast-success { border-color: var(--mint); background: var(--mint-soft); }
+.toast-error { border-color: #ffc4cc; background: var(--coral-soft); color: #a8324a; }
+.toast-info { border-color: var(--lav); background: var(--lav-soft); }
+
+.toast-icon { flex: none; width: 20px; height: 20px; margin-top: 1px; }
+.toast-success .toast-icon { color: var(--mint-deep); }
+.toast-info .toast-icon { color: var(--lav-deep); animation: toast-spin 1s linear infinite; }
+
+.toast-body { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.toast-detail { display: block; margin-top: 2px; font-weight: 600; opacity: 0.85; }
+
+.toast-close {
+    flex: none;
+    border: 0;
+    background: none;
+    color: inherit;
+    font-size: 18px;
+    line-height: 1;
+    padding: 0 4px;
+    cursor: pointer;
+    opacity: 0.6;
+}
+.toast-close:hover { opacity: 1; }
+
+.toast.leaving { opacity: 0; transform: translateY(6px); transition: opacity 0.2s, transform 0.2s; }
+
+@keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes toast-spin { to { transform: rotate(360deg); } }
+
 /* ---- Small screens ---- */
 @media (max-width: 600px) {
+    .toast-stack { right: 16px; bottom: 16px; }
     body { padding: 14px 10px; }
     .container { padding: 30px 18px 24px; border-radius: 26px; }
     .site-header { align-items: flex-start; margin-bottom: 24px; }
