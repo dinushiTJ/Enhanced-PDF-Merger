@@ -4,7 +4,7 @@
 A free, client-side PDF toolkit. It started as a PDF merger and has grown into a full set of browser-based tools — merge, split, organize, rotate, crop, watermark, number, compress, and convert PDFs — with every tool processing files locally, with no server upload.
 
 ## Tools
-* **Merge PDF** (`index.html`) — combine multiple PDFs into one, with an optional clickable table of contents. Word (`.docx`) files and images can be dropped in too; they're converted to PDF in the browser and merged alongside the PDFs. Optionally, files can be picked from Google Drive (paste a folder or file link) and the merged PDF saved back to the same Drive folder — see [Google Drive setup](#google-drive-setup)
+* **Merge PDF** (`index.html`) — combine multiple PDFs into one, with an optional clickable table of contents. Word (`.docx`) files and images can be dropped in too; they're converted to PDF in the browser and merged alongside the PDFs
 * **Split PDF** (`pages/split.html`) — split by page ranges or every N pages
 * **Organize PDF** (`pages/organize.html`) — reorder or delete pages via thumbnails
 * **Rotate PDF** (`pages/rotate.html`) — rotate all or selected pages by 90°/180°/270°
@@ -80,8 +80,6 @@ js/                       # One script per tool, plus shared modules
 │   jpg-to-pdf.js, pdf-to-jpg.js
 ├── image-to-pdf.js      # Shared image -> PDF conversion (used by the merger and JPG to PDF)
 ├── docx-to-pdf.js       # Word (.docx) -> PDF conversion for the merger
-├── google-drive.js      # Google Drive picker, download and save-back for the merger
-├── drive-config.js      # Google Cloud client ID / API key / project number (empty = Drive hidden)
 ├── pdf-loader.js        # Shared "robustly load a possibly-imperfect PDF" helper
 ├── page-ranges.js       # Shared "1-3, 5, 8-10" page-range parser
 └── github-star.js       # Live GitHub star count button
@@ -111,55 +109,6 @@ CDN dependencies (no local files):
 * **Compress PDF trade-off**: compression works by re-rendering each page as a JPEG image, which can shrink scanned/image-heavy PDFs significantly but makes the resulting text non-selectable and non-searchable; it is not a good fit for text-only documents
 * **PDF to PDF/A is best-effort**: it adds PDF/A identification metadata (XMP) but does not guarantee ISO 19005 conformance and has not been checked against official validators (e.g. veraPDF)
 * See [privacy.html](pages/privacy.html) for the full, user-facing security overview
-
-## Google Drive setup
-The merger can add files straight from Google Drive and save the merged PDF back into the same folder. It stays hidden until `js/drive-config.js` is filled in. Google doesn't let a web page read Drive anonymously, so at least an API key is needed — but visitors never set anything up.
-
-### Quick: shared links with no sign-in (API key only, ~2 minutes)
-Paste any folder or file link shared as **"Anyone with the link"** and its PDFs, Word files, images and Google Docs are added — no Google login.
-
-1. [Google Cloud Console](https://console.cloud.google.com/) → create a project (e.g. "PDF Pool").
-2. **APIs & Services → Library** → enable **Google Drive API**.
-3. **Credentials → Create credentials → API key**. Edit it: **Application restrictions** → *Websites* → `https://dinushitj.github.io/*` (and `http://localhost:8765/*` for testing); **API restrictions** → *Google Drive API* (add *Google Picker API* too if you do the full setup).
-4. Put it in `js/drive-config.js` as `apiKey: 'AIza…'` (leave the other two empty).
-
-Saving the merged PDF back to Drive, private files and "Open with" need the full setup below.
-
-### Full: sign-in, save back to Drive, private files (~10 minutes)
-
-1. Open [Google Cloud Console](https://console.cloud.google.com/) and create a project (e.g. "PDF Pool").
-2. **APIs & Services → Library**: enable **Google Drive API** and **Google Picker API**.
-3. **APIs & Services → OAuth consent screen**: choose *External*, set the app name and your support email, and add the scopes `https://www.googleapis.com/auth/drive.file` and `https://www.googleapis.com/auth/drive.install` (the second is only for the "Open with" menu below). Both are non-sensitive scopes, so you can **Publish app** to production without Google's verification review.
-4. **Credentials → Create credentials → OAuth client ID** → *Web application*. Under **Authorized JavaScript origins** add `https://dinushitj.github.io` (and `http://localhost:8765` for local testing). No redirect URIs are needed.
-5. **Credentials → Create credentials → API key**. Edit it: **Application restrictions** → *Websites* → `https://dinushitj.github.io/*` (and `http://localhost:8765/*`); **API restrictions** → *Google Picker API*.
-6. **IAM & Admin → Settings**: copy the **Project number**.
-7. Put the three values in `js/drive-config.js`:
-   ```js
-   const DRIVE_CONFIG = {
-       clientId: '1234567890-abc123.apps.googleusercontent.com',
-       apiKey: 'AIza…',
-       appId: '1234567890'   // project number
-   };
-   ```
-   These values are safe to commit: the client ID only works from the authorized origins and the key only from the allowed websites.
-
-### "Open with → PDF Pool" inside Google Drive (optional)
-Lets you select files in Google Drive, right-click → **Open with** → **PDF Pool**, and land in the merger with those files ready.
-
-1. In Google Cloud: **APIs & Services → Enabled APIs → Google Drive API → Drive UI integration**.
-2. Fill in:
-   - **Application name**: `PDF Pool`, plus a short description.
-   - **Application icons**: upload a 256×256 and a 32×32 PNG (e.g. resized `logo.png`).
-   - **Open URL**: `https://dinushitj.github.io/Enhanced-PDF-Merger/` (Drive adds `?state=…` with the chosen file IDs).
-   - **Default MIME types**: `application/pdf`, `application/vnd.openxmlformats-officedocument.wordprocessingml.document`, `image/jpeg`, `image/png`.
-   - **Default file extensions**: `pdf`, `docx`, `jpg`, `jpeg`, `png`.
-   - Tick **Multiple file support**, and **Importing** if you want Google Docs/Sheets/Slides listed too.
-3. Save, then on the PDF Pool site click **Add PDF Pool to Google Drive's "Open with" menu** under the Drive box and allow the permission. That adds the app to your Drive (once per Google account; it can take a few minutes to appear).
-4. In Drive, select one or more files → right-click → **Open with → PDF Pool**. The merger opens with a highlighted **Open N files from Drive** button: one click signs in and adds them, and **Save to Google Drive** after merging puts the result in the same folder.
-
-Without a Google Workspace Marketplace listing, "Open with → PDF Pool" appears for anyone who clicks the *Add to Google Drive* button on the site; a Marketplace listing (Google review) is only needed to make it installable from Drive itself.
-
-**How it works:** paste a Drive folder (or file) link and click *Add from Drive*. Google's picker opens in that folder; tick the files (Select all works). PDFs, Word files and images are added like local files, and Google Docs/Sheets/Slides are exported to PDF by Google. After merging, **Save to Google Drive** puts the merged PDF in the source folder. If Drive hasn't granted access to that folder yet, the folder picker opens on it and one click on **Select** confirms it. The site only ever sees the files you pick (`drive.file` scope); the token stays in memory.
 
 ## Troubleshooting
 * **"Invalid PDF" Error**: Ensure file is actually a PDF, try re-saving in Adobe Reader
