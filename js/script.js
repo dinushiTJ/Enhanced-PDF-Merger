@@ -17,7 +17,6 @@ let includeToc = true;
 let activeDownloadUrl = null;
 let mergeInProgress = false;
 let conversionsPending = 0; // Word files still being converted to PDF
-let driveFolder = null;     // { id, name } Drive folder the files came from; merged PDF can be saved there
 
 function revokeActiveDownloadUrl() {
     if (activeDownloadUrl) {
@@ -121,294 +120,6 @@ addFileBtn.addEventListener('click', () => {
         addFiles(Array.from(e.target.files));
     };
     input.click();
-});
-
-// ---- Google Drive ----
-// Pick files from a Drive folder/file link with Google's picker, and save the
-// merged PDF back to that folder. Hidden unless js/drive-config.js is filled in.
-
-const drivePanel = document.getElementById('drivePanel');
-const driveBtn = document.getElementById('driveBtn');
-const driveLinkInput = document.getElementById('driveLink');
-const driveStatus = document.getElementById('driveStatus');
-
-function updateDriveStatus() {
-    if (!driveStatus) return;
-    const where = driveFolder && driveFolder.name ? `“${driveFolder.name}”` : 'the same Drive folder';
-    if (driveFolder) {
-        driveStatus.textContent = GoogleDrive.isConfigured()
-            ? `The merged PDF can be saved back to ${where}.`
-            : `Files added from ${where}. Download the merged PDF below.`;
-    } else {
-        driveStatus.textContent = GoogleDrive.hasApiKey() ? '' : DRIVE_SETUP_NOTE;
-    }
-}
-
-function rememberDriveFolder(folderId, knownName = null) {
-    if (!folderId || driveFolder) return;
-    driveFolder = { id: folderId, name: knownName };
-    if (knownName) {
-        updateDriveStatus();
-        return;
-    }
-    updateDriveStatus();
-    GoogleDrive.folderName(folderId).then((name) => {
-        if (driveFolder && driveFolder.id === folderId && name) {
-            driveFolder.name = name;
-            updateDriveStatus();
-        }
-    });
-}
-
-// Local development (localhost, 127.0.0.1, file://): show the Drive box even
-// before setup, so it's clear what's missing. The public site keeps it hidden
-// until js/drive-config.js is filled in.
-const DRIVE_SETUP_NOTE = 'Setup needed: add a Google Cloud API key to js/drive-config.js (local preview only — this box stays hidden on the public site until it\'s set).';
-const isLocalDev = location.protocol === 'file:' || ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
-
-function explainDriveSetup() {
-    const origin = location.protocol === 'file:'
-        ? 'Open the site from a local web server (e.g. http://localhost:8765) instead of a file — Google sign-in doesn\'t work from file:// pages.'
-        : `Add ${location.origin} as an authorized JavaScript origin.`;
-    showToast('Google Drive isn\'t connected yet', 'error',
-        `Add a Google Cloud API key to js/drive-config.js to open shared Drive links without signing in (README → Google Drive setup). For private files and saving back to Drive, also add the client ID and project number. ${origin}`);
-}
-
-// Files sent by Google Drive's "Open with → PDF Pool" (see README).
-let driveOpenState = GoogleDrive.parseOpenState(location.search);
-const driveInstallBtn = document.getElementById('driveInstallBtn');
-const driveBtnLabel = driveBtn ? driveBtn.lastChild : null;
-
-function showDriveOpenState() {
-    if (!driveBtnLabel) return;
-    if (driveOpenState) {
-        const n = driveOpenState.ids.length;
-        driveBtnLabel.textContent = `Open ${n} file${n === 1 ? '' : 's'} from Drive`;
-        driveStatus.textContent = `${n} file${n === 1 ? '' : 's'} from Google Drive ${n === 1 ? 'is' : 'are'} ready. Click “${driveBtnLabel.textContent}” to add ${n === 1 ? 'it' : 'them'}.`;
-        drivePanel.classList.add('drive-panel-pending');
-    } else {
-        driveBtnLabel.textContent = 'Add from Drive';
-        drivePanel.classList.remove('drive-panel-pending');
-        updateDriveStatus();
-    }
-}
-
-async function openFromDrive() {
-    const { ids, userId } = driveOpenState;
-    driveBtn.disabled = true;
-    try {
-        await GoogleDrive.connect({ hint: userId || undefined });
-        const toast = showToast(`Opening ${ids.length} file${ids.length === 1 ? '' : 's'} from Google Drive…`, 'info');
-        const files = [];
-        for (const id of ids) {
-            let doc = null;
-            try {
-                doc = await GoogleDrive.getFile(id);
-                if (!driveFolder) rememberDriveFolder(doc.parentId);
-                files.push(await GoogleDrive.download(doc));
-            } catch (e) {
-                showToast(`Not added: ${doc ? doc.name : 'a Drive file'}`, 'error', `Couldn't open it from Google Drive: ${e.message}`);
-            }
-        }
-        toast.dismiss();
-        // Done with this request: drop ?state=… so a reload doesn't re-open it.
-        driveOpenState = null;
-        history.replaceState(null, '', location.pathname + location.hash);
-        showDriveOpenState();
-        await addFiles(files);
-    } catch (e) {
-        showToast('Google Drive', 'error', e.message);
-    } finally {
-        driveBtn.disabled = false;
-    }
-}
-
-// Download Drive items one by one (keeping order), then add them like
-// local files. download is GoogleDrive.download (signed in) or downloadPublic.
-async function addDriveDocs(docs, download, toast) {
-    const files = [];
-    for (const doc of docs) {
-        try {
-            files.push(await download(doc));
-        } catch (e) {
-            showToast(`Not added: ${doc.name}`, 'error', `Couldn't download it from Google Drive: ${e.message}`);
-        }
-    }
-    toast.dismiss();
-    await addFiles(files);
-}
-
-// A link shared as "Anyone with the link": read it with the API key alone,
-// no sign-in. Throws (with .status) if Drive refuses, e.g. a private file.
-async function addPublicDrive(target) {
-    const toast = showToast('Reading the Google Drive link…', 'info');
-    try {
-        if (target.folderId) {
-            const folder = await GoogleDrive.listPublicFolder(target.folderId, target.resourceKey);
-            if (folder.files.length === 0) {
-                toast.update(`No PDF, Word or image files in “${folder.name}”`, 'error', folder.skipped
-                    ? `${folder.skipped} other file${folder.skipped === 1 ? ' was' : 's were'} skipped (folders and unsupported types aren't added).`
-                    : 'The folder is empty, or the files inside aren\'t shared as "Anyone with the link".');
-                return;
-            }
-            rememberDriveFolder(target.folderId, folder.name);
-            toast.update(`Adding ${folder.files.length} file${folder.files.length === 1 ? '' : 's'} from “${folder.name}”…`, 'info');
-            await addDriveDocs(folder.files, GoogleDrive.downloadPublic, toast);
-        } else {
-            const doc = await GoogleDrive.getPublicFile(target.fileId, target.resourceKey);
-            rememberDriveFolder(doc.parentId);
-            toast.update(`Adding ${doc.name} from Google Drive…`, 'info');
-            await addDriveDocs([doc], GoogleDrive.downloadPublic, toast);
-        }
-    } catch (e) {
-        toast.dismiss();
-        throw e;
-    }
-}
-
-async function addFromDrive() {
-    if (driveOpenState && GoogleDrive.isConfigured()) return openFromDrive();
-    const link = driveLinkInput.value.trim();
-    const target = link ? GoogleDrive.parseDriveLink(link) : {};
-    if (!target) {
-        showToast('That isn\'t a Google Drive link', 'error', 'Paste a link to a Drive folder or file, or leave the box empty to browse your Drive.');
-        return;
-    }
-    if (!GoogleDrive.hasApiKey()) {
-        explainDriveSetup();
-        return;
-    }
-    if (!link && !GoogleDrive.isConfigured()) {
-        showToast('Paste a Google Drive link', 'error', 'Paste a link to a folder or file shared as "Anyone with the link".');
-        return;
-    }
-    driveBtn.disabled = true;
-    try {
-        // Shared links work without signing in; private ones fall back to
-        // Google sign-in and the picker when that's set up.
-        if (link) {
-            try {
-                await addPublicDrive(target);
-                return;
-            } catch (e) {
-                // Without sign-in there's nothing else to try; with it, any
-                // refusal (private file, restricted key…) falls back to the picker.
-                if (!GoogleDrive.isConfigured()) {
-                    throw new Error(e.status === 404 || e.status === 403
-                        ? 'That link isn\'t shared publicly. In Google Drive, choose Share → General access → "Anyone with the link", then paste it again.'
-                        : e.message);
-                }
-            }
-        }
-        const docs = await GoogleDrive.pick(target);
-        if (docs.length === 0) return;
-        rememberDriveFolder(target.folderId || docs[0].parentId);
-        const toast = showToast(`Adding ${docs.length} file${docs.length === 1 ? '' : 's'} from Google Drive…`, 'info');
-        await addDriveDocs(docs, GoogleDrive.download, toast);
-    } catch (e) {
-        showToast('Google Drive', 'error', e.message);
-    } finally {
-        driveBtn.disabled = false;
-    }
-}
-
-// "Save to Google Drive" on the result card, when the files came from Drive.
-function renderDriveSave(blob, filename) {
-    const slot = document.getElementById('driveSaveSlot');
-    if (!slot || !driveFolder || !GoogleDrive.isConfigured()) return;
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'btn-drive-save';
-    button.textContent = 'Save to Google Drive';
-    const note = document.createElement('span');
-    note.className = 'drive-save-note';
-    note.textContent = driveFolder.name ? `Into “${driveFolder.name}”` : 'Into the same Drive folder';
-    slot.replaceChildren(button, note);
-
-    button.addEventListener('click', async () => {
-        button.disabled = true;
-        button.textContent = 'Saving to Google Drive…';
-        try {
-            const saved = await GoogleDrive.saveToFolder(new Uint8Array(await blob.arrayBuffer()), filename, driveFolder.id);
-            const link = document.createElement('a');
-            link.href = saved.webViewLink;
-            link.target = '_blank';
-            link.rel = 'noopener noreferrer';
-            link.className = 'drive-open-link';
-            link.textContent = 'Open in Google Drive';
-            const done = document.createElement('span');
-            done.className = 'drive-save-note';
-            done.textContent = `Saved as “${saved.name}”`;
-            slot.replaceChildren(done, link);
-            showToast('Saved to Google Drive', 'success', saved.name);
-        } catch (e) {
-            button.disabled = false;
-            button.textContent = 'Save to Google Drive';
-            if (!e.cancelled) showToast('Couldn\'t save to Google Drive', 'error', e.message);
-        }
-    });
-}
-
-const driveAvailable = Boolean(drivePanel) && (GoogleDrive.hasApiKey() || isLocalDev);
-
-if (driveAvailable) {
-    drivePanel.hidden = false;
-    updateDriveStatus();
-    showDriveOpenState();
-    if (driveOpenState) drivePanel.scrollIntoView({ block: 'center' });
-    driveBtn.addEventListener('click', addFromDrive);
-    driveInstallBtn.hidden = !GoogleDrive.isConfigured() && !isLocalDev;
-    driveInstallBtn.addEventListener('click', async () => {
-        if (!GoogleDrive.isConfigured()) {
-            explainDriveSetup();
-            return;
-        }
-        driveInstallBtn.disabled = true;
-        try {
-            await GoogleDrive.installOpenWith();
-            showToast('PDF Pool added to Google Drive', 'success',
-                'In Google Drive, select files, right-click → Open with → PDF Pool. It can take a few minutes to appear.');
-        } catch (e) {
-            showToast('Couldn\'t add PDF Pool to Google Drive', 'error', e.message);
-        } finally {
-            driveInstallBtn.disabled = false;
-        }
-    });
-    driveInstallBtn.addEventListener('pointerenter', GoogleDrive.preload, { once: true });
-    driveBtn.addEventListener('pointerenter', GoogleDrive.preload, { once: true });
-    driveBtn.addEventListener('focus', GoogleDrive.preload, { once: true });
-    driveLinkInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') { e.preventDefault(); addFromDrive(); }
-    });
-    // Pasting straight into the box starts right away.
-    driveLinkInput.addEventListener('paste', (e) => {
-        const text = e.clipboardData && e.clipboardData.getData('text');
-        if (text && GoogleDrive.parseDriveLink(text)) {
-            e.preventDefault();
-            driveLinkInput.value = text.trim();
-            addFromDrive();
-        }
-    });
-}
-
-// Paste anywhere on the page: a Drive link opens the Drive picker, and
-// copied files (e.g. from Finder or Explorer) are added like dropped ones.
-document.addEventListener('paste', (e) => {
-    const target = e.target;
-    if (target && target !== document.body && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) return;
-    const data = e.clipboardData;
-    if (!data) return;
-    if (data.files && data.files.length) {
-        e.preventDefault();
-        addFiles(Array.from(data.files));
-        return;
-    }
-    const text = data.getData('text');
-    if (driveAvailable && text && GoogleDrive.parseDriveLink(text)) {
-        e.preventDefault();
-        driveLinkInput.value = text.trim();
-        addFromDrive();
-    }
 });
 
 clearAllBtn.addEventListener('click', () => {
@@ -972,8 +683,6 @@ function updatePageTitle(fileId, pageTitle) {
 
 function clearAllFiles() {
     pdfFiles.clear();
-    driveFolder = null;
-    updateDriveStatus();
     movedFiles.clear();
     revokeActiveDownloadUrl();
     pdfContainer.innerHTML = '';
@@ -1392,7 +1101,6 @@ async function mergePdfs() {
                             </svg>
                             Download Merged PDF
                         </a>
-                        <div id="driveSaveSlot" class="drive-save-slot"></div>
                     </div>
 
                     <div class="preview-block">
@@ -1402,7 +1110,6 @@ async function mergePdfs() {
                 </div>
             `;
         result.style.display = 'block';
-        renderDriveSave(blob, filename);
 
         // Celebrate a successful merge (once, only after the success UI is on screen).
         if (typeof confetti === 'function') {
