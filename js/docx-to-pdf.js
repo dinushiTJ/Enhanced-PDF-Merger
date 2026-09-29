@@ -138,6 +138,21 @@ const DocxToPdf = (() => {
         }
     }
 
+    // Word sizes table columns from the grid widths saved in the file, while
+    // the browser's automatic table layout treats them as hints and
+    // rebalances columns around their content. Use the saved widths as-is.
+    function useSavedColumnWidths(root) {
+        for (const table of root.querySelectorAll('table')) {
+            const cols = Array.from(table.querySelectorAll(':scope > colgroup > col'));
+            if (cols.length === 0 || !cols.every((col) => parseFloat(col.style.width) > 0)) continue;
+            table.style.tableLayout = 'fixed';
+            if (!table.style.width) {
+                const total = cols.reduce((sum, col) => sum + parseFloat(col.style.width), 0);
+                table.style.width = `${total}${cols[0].style.width.replace(/[\d.]+/, '')}`;
+            }
+        }
+    }
+
     function pageHeightOf(section) {
         const minHeight = parseFloat(getComputedStyle(section).minHeight);
         return minHeight > 0 ? minHeight : Math.round(section.offsetWidth * 1.414);
@@ -803,6 +818,7 @@ const DocxToPdf = (() => {
 
             // Lay text out with the fonts that will be embedded, then wait for
             // images so pages are measured correctly.
+            useSavedColumnWidths(host);
             const textLayer = await applyDocumentFonts(host);
             if (document.fonts && document.fonts.ready) await document.fonts.ready;
             fixImageTypes(host);
