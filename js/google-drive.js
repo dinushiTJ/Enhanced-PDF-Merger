@@ -5,6 +5,7 @@
 // and the access token lives in memory only.
 const GoogleDrive = (() => {
     const SCOPE = 'https://www.googleapis.com/auth/drive.file';
+    const INSTALL_SCOPE = 'https://www.googleapis.com/auth/drive.install';
     const API = 'https://www.googleapis.com/drive/v3';
     const UPLOAD_API = 'https://www.googleapis.com/upload/drive/v3';
     const FOLDER_TYPE = 'application/vnd.google-apps.folder';
@@ -80,10 +81,13 @@ const GoogleDrive = (() => {
 
     // Sign in (first time) or silently refresh the token. Must be called from
     // a click handler so the Google sign-in pop-up isn't blocked.
-    async function connect() {
+    // install: also ask for drive.install, which adds PDF Pool to the user's
+    // Drive "Open with" menu. hint: the Drive user ID from an "Open with"
+    // request, so Google picks the same account.
+    async function connect({ install = false, hint } = {}) {
         if (!isConfigured()) throw new Error('Google Drive isn\'t set up for this site yet.');
         await loadScripts();
-        if (token && token.expiresAt - Date.now() > 60 * 1000) return token.value;
+        if (!install && token && token.expiresAt - Date.now() > 60 * 1000) return token.value;
         return new Promise((resolve, reject) => {
             if (!tokenClient) {
                 tokenClient = window.google.accounts.oauth2.initTokenClient({
@@ -99,6 +103,11 @@ const GoogleDrive = (() => {
                         : `Google sign-in failed (${response.error}).`));
                     return;
                 }
+                if (install && window.google.accounts.oauth2.hasGrantedAllScopes &&
+                    !window.google.accounts.oauth2.hasGrantedAllScopes(response, INSTALL_SCOPE)) {
+                    reject(new Error('PDF Pool wasn\'t added to Google Drive. Tick the "Open with" permission when Google asks.'));
+                    return;
+                }
                 token = { value: response.access_token, expiresAt: Date.now() + Number(response.expires_in || 3600) * 1000 };
                 resolve(token.value);
             };
@@ -107,8 +116,40 @@ const GoogleDrive = (() => {
                     ? 'The Google sign-in window was blocked. Allow pop-ups for this site and try again.'
                     : 'Google sign-in was closed before it finished.'));
             };
-            tokenClient.requestAccessToken({ prompt: token ? '' : undefined });
+            const request = { scope: install ? `${SCOPE} ${INSTALL_SCOPE}` : SCOPE };
+            if (install) request.prompt = 'consent';
+            else if (token) request.prompt = '';
+            if (hint) request.hint = hint;
+            tokenClient.requestAccessToken(request);
         });
+    }
+
+    // Adds "PDF Pool" to the signed-in user's Drive "Open with" menu (needs
+    // the Drive UI integration configured in Google Cloud; see README).
+    function installOpenWith() {
+        return connect({ install: true });
+    }
+
+    // Google Drive opens the site's Open URL with ?state={"ids":[…],
+    // "action":"open","userId":"…"} when files are opened with PDF Pool.
+    // Google Docs/Sheets/Slides arrive as exportIds.
+    function parseOpenState(search) {
+        let state;
+        try {
+            state = JSON.parse(new URLSearchParams(search).get('state') || 'null');
+        } catch (e) {
+            return null;
+        }
+        if (!state || state.action !== 'open') return null;
+        const ids = [...(state.ids || []), ...(state.exportIds || [])].filter((id) => /^[\w-]{10,}$/.test(id));
+        return ids.length ? { ids, userId: state.userId || null } : null;
+    }
+
+    // Name, type and folder of a file the user opened with PDF Pool.
+    async function getFile(id) {
+        const res = await driveFetch(`${API}/files/${encodeURIComponent(id)}?fields=id,name,mimeType,parents&supportsAllDrives=true`);
+        const meta = await res.json();
+        return { id: meta.id, name: meta.name, mimeType: meta.mimeType, parentId: (meta.parents && meta.parents[0]) || null };
     }
 
     function openPicker(view, { multiselect }) {
@@ -236,5 +277,5 @@ const GoogleDrive = (() => {
         if (isConfigured()) loadScripts().catch(() => {});
     }
 
-    return { isConfigured, parseDriveLink, preload, connect, pick, download, saveToFolder, folderName, disconnect };
+    return { isConfigured, parseDriveLink, parseOpenState, preload, connect, installOpenWith, pick, getFile, download, saveToFolder, folderName, disconnect };
 })();

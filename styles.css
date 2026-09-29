@@ -1840,6 +1840,20 @@ svg { flex-shrink: 0; }
 .btn-drive-save:hover:not(:disabled) { background: var(--sky-soft); }
 .drive-btn:disabled,
 .btn-drive-save:disabled { opacity: 0.6; cursor: progress; }
+.drive-panel-pending { border-style: solid; border-color: #7cc0f5; box-shadow: 0 0 0 4px rgba(124, 192, 245, 0.25); }
+.drive-install {
+    margin-top: 10px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: #2f6fa8;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: underline;
+    cursor: pointer;
+}
+.drive-install:disabled { opacity: 0.6; cursor: progress; }
 .drive-status { margin-top: 8px; font-size: 13px; font-weight: 700; color: #2f6fa8; }
 .drive-status:empty { display: none; }
 

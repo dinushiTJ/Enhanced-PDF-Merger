@@ -117,7 +117,7 @@ The merger can add files straight from Google Drive and save the merged PDF back
 
 1. Open [Google Cloud Console](https://console.cloud.google.com/) and create a project (e.g. "PDF Pool").
 2. **APIs & Services → Library**: enable **Google Drive API** and **Google Picker API**.
-3. **APIs & Services → OAuth consent screen**: choose *External*, set the app name and your support email, and add the scope `https://www.googleapis.com/auth/drive.file`. It's a non-sensitive scope, so you can **Publish app** to production without Google's verification review.
+3. **APIs & Services → OAuth consent screen**: choose *External*, set the app name and your support email, and add the scopes `https://www.googleapis.com/auth/drive.file` and `https://www.googleapis.com/auth/drive.install` (the second is only for the "Open with" menu below). Both are non-sensitive scopes, so you can **Publish app** to production without Google's verification review.
 4. **Credentials → Create credentials → OAuth client ID** → *Web application*. Under **Authorized JavaScript origins** add `https://dinushitj.github.io` (and `http://localhost:8765` for local testing). No redirect URIs are needed.
 5. **Credentials → Create credentials → API key**. Edit it: **Application restrictions** → *Websites* → `https://dinushitj.github.io/*` (and `http://localhost:8765/*`); **API restrictions** → *Google Picker API*.
 6. **IAM & Admin → Settings**: copy the **Project number**.
@@ -130,6 +130,22 @@ The merger can add files straight from Google Drive and save the merged PDF back
    };
    ```
    These values are safe to commit: the client ID only works from the authorized origins and the key only from the allowed websites.
+
+### "Open with → PDF Pool" inside Google Drive (optional)
+Lets you select files in Google Drive, right-click → **Open with** → **PDF Pool**, and land in the merger with those files ready.
+
+1. In Google Cloud: **APIs & Services → Enabled APIs → Google Drive API → Drive UI integration**.
+2. Fill in:
+   - **Application name**: `PDF Pool`, plus a short description.
+   - **Application icons**: upload a 256×256 and a 32×32 PNG (e.g. resized `logo.png`).
+   - **Open URL**: `https://dinushitj.github.io/Enhanced-PDF-Merger/` (Drive adds `?state=…` with the chosen file IDs).
+   - **Default MIME types**: `application/pdf`, `application/vnd.openxmlformats-officedocument.wordprocessingml.document`, `image/jpeg`, `image/png`.
+   - **Default file extensions**: `pdf`, `docx`, `jpg`, `jpeg`, `png`.
+   - Tick **Multiple file support**, and **Importing** if you want Google Docs/Sheets/Slides listed too.
+3. Save, then on the PDF Pool site click **Add PDF Pool to Google Drive's "Open with" menu** under the Drive box and allow the permission. That adds the app to your Drive (once per Google account; it can take a few minutes to appear).
+4. In Drive, select one or more files → right-click → **Open with → PDF Pool**. The merger opens with a highlighted **Open N files from Drive** button: one click signs in and adds them, and **Save to Google Drive** after merging puts the result in the same folder.
+
+Without a Google Workspace Marketplace listing, "Open with → PDF Pool" appears for anyone who clicks the *Add to Google Drive* button on the site; a Marketplace listing (Google review) is only needed to make it installable from Drive itself.
 
 **How it works:** paste a Drive folder (or file) link and click *Add from Drive*. Google's picker opens in that folder; tick the files (Select all works). PDFs, Word files and images are added like local files, and Google Docs/Sheets/Slides are exported to PDF by Google. After merging, **Save to Google Drive** puts the merged PDF in the source folder. If Drive hasn't granted access to that folder yet, the folder picker opens on it and one click on **Select** confirms it. The site only ever sees the files you pick (`drive.file` scope); the token stays in memory.
 

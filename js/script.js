@@ -165,7 +165,57 @@ function explainDriveSetup() {
         `Fill in js/drive-config.js with your Google Cloud client ID, API key and project number (README → Google Drive setup). ${origin}`);
 }
 
+// Files sent by Google Drive's "Open with → PDF Pool" (see README).
+let driveOpenState = GoogleDrive.parseOpenState(location.search);
+const driveInstallBtn = document.getElementById('driveInstallBtn');
+const driveBtnLabel = driveBtn ? driveBtn.lastChild : null;
+
+function showDriveOpenState() {
+    if (!driveBtnLabel) return;
+    if (driveOpenState) {
+        const n = driveOpenState.ids.length;
+        driveBtnLabel.textContent = `Open ${n} file${n === 1 ? '' : 's'} from Drive`;
+        driveStatus.textContent = `${n} file${n === 1 ? '' : 's'} from Google Drive ${n === 1 ? 'is' : 'are'} ready. Click “${driveBtnLabel.textContent}” to add ${n === 1 ? 'it' : 'them'}.`;
+        drivePanel.classList.add('drive-panel-pending');
+    } else {
+        driveBtnLabel.textContent = 'Add from Drive';
+        drivePanel.classList.remove('drive-panel-pending');
+        updateDriveStatus();
+    }
+}
+
+async function openFromDrive() {
+    const { ids, userId } = driveOpenState;
+    driveBtn.disabled = true;
+    try {
+        await GoogleDrive.connect({ hint: userId || undefined });
+        const toast = showToast(`Opening ${ids.length} file${ids.length === 1 ? '' : 's'} from Google Drive…`, 'info');
+        const files = [];
+        for (const id of ids) {
+            let doc = null;
+            try {
+                doc = await GoogleDrive.getFile(id);
+                if (!driveFolder) rememberDriveFolder(doc.parentId);
+                files.push(await GoogleDrive.download(doc));
+            } catch (e) {
+                showToast(`Not added: ${doc ? doc.name : 'a Drive file'}`, 'error', `Couldn't open it from Google Drive: ${e.message}`);
+            }
+        }
+        toast.dismiss();
+        // Done with this request: drop ?state=… so a reload doesn't re-open it.
+        driveOpenState = null;
+        history.replaceState(null, '', location.pathname + location.hash);
+        showDriveOpenState();
+        await addFiles(files);
+    } catch (e) {
+        showToast('Google Drive', 'error', e.message);
+    } finally {
+        driveBtn.disabled = false;
+    }
+}
+
 async function addFromDrive() {
+    if (driveOpenState && GoogleDrive.isConfigured()) return openFromDrive();
     const link = driveLinkInput.value.trim();
     const target = link ? GoogleDrive.parseDriveLink(link) : {};
     if (!target) {
@@ -242,7 +292,26 @@ const driveAvailable = Boolean(drivePanel) && (GoogleDrive.isConfigured() || isL
 if (driveAvailable) {
     drivePanel.hidden = false;
     updateDriveStatus();
+    showDriveOpenState();
+    if (driveOpenState) drivePanel.scrollIntoView({ block: 'center' });
     driveBtn.addEventListener('click', addFromDrive);
+    driveInstallBtn.addEventListener('click', async () => {
+        if (!GoogleDrive.isConfigured()) {
+            explainDriveSetup();
+            return;
+        }
+        driveInstallBtn.disabled = true;
+        try {
+            await GoogleDrive.installOpenWith();
+            showToast('PDF Pool added to Google Drive', 'success',
+                'In Google Drive, select files, right-click → Open with → PDF Pool. It can take a few minutes to appear.');
+        } catch (e) {
+            showToast('Couldn\'t add PDF Pool to Google Drive', 'error', e.message);
+        } finally {
+            driveInstallBtn.disabled = false;
+        }
+    });
+    driveInstallBtn.addEventListener('pointerenter', GoogleDrive.preload, { once: true });
     driveBtn.addEventListener('pointerenter', GoogleDrive.preload, { once: true });
     driveBtn.addEventListener('focus', GoogleDrive.preload, { once: true });
     driveLinkInput.addEventListener('keydown', (e) => {
