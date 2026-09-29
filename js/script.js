@@ -17,6 +17,7 @@ let includeToc = true;
 let activeDownloadUrl = null;
 let mergeInProgress = false;
 let conversionsPending = 0; // Word files still being converted to PDF
+let driveFolder = null;     // { id, name } Drive folder the files came from; merged PDF can be saved there
 
 function revokeActiveDownloadUrl() {
     if (activeDownloadUrl) {
@@ -121,6 +122,112 @@ addFileBtn.addEventListener('click', () => {
     };
     input.click();
 });
+
+// ---- Google Drive ----
+// Pick files from a Drive folder/file link with Google's picker, and save the
+// merged PDF back to that folder. Hidden unless js/drive-config.js is filled in.
+
+const drivePanel = document.getElementById('drivePanel');
+const driveBtn = document.getElementById('driveBtn');
+const driveLinkInput = document.getElementById('driveLink');
+const driveStatus = document.getElementById('driveStatus');
+
+function updateDriveStatus() {
+    if (!driveStatus) return;
+    driveStatus.textContent = driveFolder
+        ? `The merged PDF can be saved back to ${driveFolder.name ? `“${driveFolder.name}”` : 'the same Drive folder'}.`
+        : '';
+}
+
+function rememberDriveFolder(folderId) {
+    if (!folderId || driveFolder) return;
+    driveFolder = { id: folderId, name: null };
+    updateDriveStatus();
+    GoogleDrive.folderName(folderId).then((name) => {
+        if (driveFolder && driveFolder.id === folderId && name) {
+            driveFolder.name = name;
+            updateDriveStatus();
+        }
+    });
+}
+
+async function addFromDrive() {
+    const link = driveLinkInput.value.trim();
+    const target = link ? GoogleDrive.parseDriveLink(link) : {};
+    if (!target) {
+        showToast('That isn\'t a Google Drive link', 'error', 'Paste a link to a Drive folder or file, or leave the box empty to browse your Drive.');
+        return;
+    }
+    driveBtn.disabled = true;
+    try {
+        const docs = await GoogleDrive.pick(target);
+        if (docs.length === 0) return;
+        rememberDriveFolder(target.folderId || docs[0].parentId);
+
+        const toast = showToast(`Adding ${docs.length} file${docs.length === 1 ? '' : 's'} from Google Drive…`, 'info');
+        const files = [];
+        for (const doc of docs) {
+            try {
+                files.push(await GoogleDrive.download(doc));
+            } catch (e) {
+                showToast(`Not added: ${doc.name}`, 'error', `Couldn't download it from Google Drive: ${e.message}`);
+            }
+        }
+        toast.dismiss();
+        await addFiles(files);
+    } catch (e) {
+        showToast('Google Drive', 'error', e.message);
+    } finally {
+        driveBtn.disabled = false;
+    }
+}
+
+// "Save to Google Drive" on the result card, when the files came from Drive.
+function renderDriveSave(blob, filename) {
+    const slot = document.getElementById('driveSaveSlot');
+    if (!slot || !driveFolder || !GoogleDrive.isConfigured()) return;
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'btn-drive-save';
+    button.textContent = 'Save to Google Drive';
+    const note = document.createElement('span');
+    note.className = 'drive-save-note';
+    note.textContent = driveFolder.name ? `Into “${driveFolder.name}”` : 'Into the same Drive folder';
+    slot.replaceChildren(button, note);
+
+    button.addEventListener('click', async () => {
+        button.disabled = true;
+        button.textContent = 'Saving to Google Drive…';
+        try {
+            const saved = await GoogleDrive.saveToFolder(new Uint8Array(await blob.arrayBuffer()), filename, driveFolder.id);
+            const link = document.createElement('a');
+            link.href = saved.webViewLink;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            link.className = 'drive-open-link';
+            link.textContent = 'Open in Google Drive';
+            const done = document.createElement('span');
+            done.className = 'drive-save-note';
+            done.textContent = `Saved as “${saved.name}”`;
+            slot.replaceChildren(done, link);
+            showToast('Saved to Google Drive', 'success', saved.name);
+        } catch (e) {
+            button.disabled = false;
+            button.textContent = 'Save to Google Drive';
+            if (!e.cancelled) showToast('Couldn\'t save to Google Drive', 'error', e.message);
+        }
+    });
+}
+
+if (GoogleDrive.isConfigured() && drivePanel) {
+    drivePanel.hidden = false;
+    driveBtn.addEventListener('click', addFromDrive);
+    driveBtn.addEventListener('pointerenter', GoogleDrive.preload, { once: true });
+    driveBtn.addEventListener('focus', GoogleDrive.preload, { once: true });
+    driveLinkInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); addFromDrive(); }
+    });
+}
 
 clearAllBtn.addEventListener('click', () => {
     if (confirm('Are you sure you want to remove all PDF files?')) {
@@ -683,6 +790,8 @@ function updatePageTitle(fileId, pageTitle) {
 
 function clearAllFiles() {
     pdfFiles.clear();
+    driveFolder = null;
+    updateDriveStatus();
     movedFiles.clear();
     revokeActiveDownloadUrl();
     pdfContainer.innerHTML = '';
@@ -1101,6 +1210,7 @@ async function mergePdfs() {
                             </svg>
                             Download Merged PDF
                         </a>
+                        <div id="driveSaveSlot" class="drive-save-slot"></div>
                     </div>
 
                     <div class="preview-block">
@@ -1110,6 +1220,7 @@ async function mergePdfs() {
                 </div>
             `;
         result.style.display = 'block';
+        renderDriveSave(blob, filename);
 
         // Celebrate a successful merge (once, only after the success UI is on screen).
         if (typeof confetti === 'function') {

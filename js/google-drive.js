@@ -1,0 +1,240 @@
+// Google Drive access for the merger (script.js): pick files with Google's
+// own picker, download them into the browser, and save the merged PDF back
+// to a Drive folder. Uses the drive.file scope, which only covers files the
+// user picks or the site creates. Google's scripts are loaded on first use,
+// and the access token lives in memory only.
+const GoogleDrive = (() => {
+    const SCOPE = 'https://www.googleapis.com/auth/drive.file';
+    const API = 'https://www.googleapis.com/drive/v3';
+    const UPLOAD_API = 'https://www.googleapis.com/upload/drive/v3';
+    const FOLDER_TYPE = 'application/vnd.google-apps.folder';
+
+    // Google Docs/Sheets/Slides have no file content of their own; Google
+    // exports them to PDF itself, with exact formatting.
+    const GOOGLE_EXPORTS = {
+        'application/vnd.google-apps.document': 'Google Doc',
+        'application/vnd.google-apps.spreadsheet': 'Google Sheet',
+        'application/vnd.google-apps.presentation': 'Google Slides'
+    };
+    const PICKABLE_TYPES = [
+        'application/pdf',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/bmp',
+        ...Object.keys(GOOGLE_EXPORTS)
+    ];
+
+    let token = null;          // { value, expiresAt }
+    let tokenClient = null;
+    let scriptsPromise = null;
+
+    function isConfigured() {
+        return typeof DRIVE_CONFIG !== 'undefined' &&
+            Boolean(DRIVE_CONFIG.clientId && DRIVE_CONFIG.apiKey && DRIVE_CONFIG.appId);
+    }
+
+    // Accepts folder links, file links, open?id= links and Docs/Sheets/Slides
+    // links. Returns { folderId } or { fileId }, or null if it isn't a Drive link.
+    function parseDriveLink(text) {
+        const value = (text || '').trim();
+        if (!value) return null;
+        let url;
+        try {
+            url = new URL(value);
+        } catch (e) {
+            return null;
+        }
+        if (!/(^|\.)google\.com$/.test(url.hostname)) return null;
+        const folder = /\/folders\/([\w-]{10,})/.exec(url.pathname);
+        if (folder) return { folderId: folder[1] };
+        const file = /\/(?:file|document|spreadsheets|presentation|drawings)\/d\/([\w-]{10,})/.exec(url.pathname);
+        if (file) return { fileId: file[1] };
+        const id = url.searchParams.get('id');
+        if (id && /^[\w-]{10,}$/.test(id)) return { fileId: id };
+        return null;
+    }
+
+    function loadScript(src) {
+        return new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = src;
+            script.async = true;
+            script.onload = resolve;
+            script.onerror = () => reject(new Error('Could not reach Google. Check your internet connection and try again.'));
+            document.head.appendChild(script);
+        });
+    }
+
+    function loadScripts() {
+        if (!scriptsPromise) {
+            scriptsPromise = Promise.all([
+                window.google && window.google.accounts ? null : loadScript('https://accounts.google.com/gsi/client'),
+                window.gapi ? null : loadScript('https://apis.google.com/js/api.js')
+            ])
+                .then(() => new Promise((resolve, reject) => {
+                    window.gapi.load('picker', { callback: resolve, onerror: () => reject(new Error('Could not load the Google Drive picker.')) });
+                }))
+                .catch((e) => { scriptsPromise = null; throw e; });
+        }
+        return scriptsPromise;
+    }
+
+    // Sign in (first time) or silently refresh the token. Must be called from
+    // a click handler so the Google sign-in pop-up isn't blocked.
+    async function connect() {
+        if (!isConfigured()) throw new Error('Google Drive isn\'t set up for this site yet.');
+        await loadScripts();
+        if (token && token.expiresAt - Date.now() > 60 * 1000) return token.value;
+        return new Promise((resolve, reject) => {
+            if (!tokenClient) {
+                tokenClient = window.google.accounts.oauth2.initTokenClient({
+                    client_id: DRIVE_CONFIG.clientId,
+                    scope: SCOPE,
+                    callback: () => {}
+                });
+            }
+            tokenClient.callback = (response) => {
+                if (response.error) {
+                    reject(new Error(response.error === 'access_denied'
+                        ? 'Google Drive access wasn\'t allowed.'
+                        : `Google sign-in failed (${response.error}).`));
+                    return;
+                }
+                token = { value: response.access_token, expiresAt: Date.now() + Number(response.expires_in || 3600) * 1000 };
+                resolve(token.value);
+            };
+            tokenClient.error_callback = (err) => {
+                reject(new Error(err && err.type === 'popup_failed_to_open'
+                    ? 'The Google sign-in window was blocked. Allow pop-ups for this site and try again.'
+                    : 'Google sign-in was closed before it finished.'));
+            };
+            tokenClient.requestAccessToken({ prompt: token ? '' : undefined });
+        });
+    }
+
+    function openPicker(view, { multiselect }) {
+        const { picker } = window.google;
+        return new Promise((resolve) => {
+            const builder = new picker.PickerBuilder()
+                .addView(view)
+                .setOAuthToken(token.value)
+                .setDeveloperKey(DRIVE_CONFIG.apiKey)
+                .setAppId(DRIVE_CONFIG.appId)
+                .setOrigin(window.location.protocol + '//' + window.location.host)
+                .setCallback((data) => {
+                    if (data[picker.Response.ACTION] === picker.Action.PICKED) {
+                        resolve(data[picker.Response.DOCUMENTS].map((doc) => ({
+                            id: doc[picker.Document.ID],
+                            name: doc[picker.Document.NAME],
+                            mimeType: doc[picker.Document.MIME_TYPE],
+                            parentId: doc[picker.Document.PARENT_ID] || null
+                        })));
+                    } else if (data[picker.Response.ACTION] === picker.Action.CANCEL) {
+                        resolve([]);
+                    }
+                });
+            if (multiselect) builder.enableFeature(picker.Feature.MULTISELECT_ENABLED);
+            builder.build().setVisible(true);
+        });
+    }
+
+    // Let the user pick files, opened in the pasted folder (or narrowed to
+    // the pasted file). Resolves to [] if they cancel.
+    async function pick({ folderId = null, fileId = null } = {}) {
+        await connect();
+        const view = new window.google.picker.DocsView(window.google.picker.ViewId.DOCS)
+            .setMimeTypes(PICKABLE_TYPES.join(','))
+            .setIncludeFolders(true)
+            .setMode(window.google.picker.DocsViewMode.LIST);
+        if (folderId) view.setParent(folderId);
+        if (fileId && typeof view.setFileIds === 'function') view.setFileIds(fileId);
+        return openPicker(view, { multiselect: true });
+    }
+
+    async function driveFetch(url, options = {}) {
+        const value = await connect();
+        const res = await fetch(url, { ...options, headers: { ...(options.headers || {}), Authorization: `Bearer ${value}` } });
+        if (!res.ok) {
+            let reason = '';
+            try { reason = (await res.json()).error.message; } catch (e) { /* not JSON */ }
+            const error = new Error(reason || `Google Drive returned an error (${res.status}).`);
+            error.status = res.status;
+            throw error;
+        }
+        return res;
+    }
+
+    // One picked Drive item -> a File the merger can add. Google Docs,
+    // Sheets and Slides are exported to PDF by Google.
+    async function download(doc) {
+        if (GOOGLE_EXPORTS[doc.mimeType]) {
+            const res = await driveFetch(`${API}/files/${encodeURIComponent(doc.id)}/export?mimeType=application%2Fpdf`);
+            return new File([await res.blob()], `${doc.name}.pdf`, { type: 'application/pdf' });
+        }
+        const res = await driveFetch(`${API}/files/${encodeURIComponent(doc.id)}?alt=media&supportsAllDrives=true`);
+        return new File([await res.blob()], doc.name, { type: doc.mimeType || res.headers.get('Content-Type') || '' });
+    }
+
+    async function upload(bytes, name, folderId) {
+        const metadata = { name, mimeType: 'application/pdf' };
+        if (folderId) metadata.parents = [folderId];
+        const start = await driveFetch(`${UPLOAD_API}/files?uploadType=resumable&supportsAllDrives=true&fields=id,name,webViewLink`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json; charset=UTF-8',
+                'X-Upload-Content-Type': 'application/pdf',
+                'X-Upload-Content-Length': String(bytes.byteLength)
+            },
+            body: JSON.stringify(metadata)
+        });
+        const session = start.headers.get('Location');
+        if (!session) throw new Error('Google Drive didn\'t start the upload.');
+        const res = await driveFetch(session, { method: 'PUT', headers: { 'Content-Type': 'application/pdf' }, body: bytes });
+        return res.json();
+    }
+
+    // Save the merged PDF into folderId (or My Drive when there isn't one).
+    // drive.file may not cover a folder the user never picked; then the
+    // folder picker opens in that folder so one click grants it, and the
+    // upload retries there (or wherever they choose instead).
+    async function saveToFolder(bytes, name, folderId) {
+        try {
+            return await upload(bytes, name, folderId);
+        } catch (e) {
+            if (!folderId || (e.status !== 403 && e.status !== 404)) throw e;
+        }
+        const view = new window.google.picker.DocsView(window.google.picker.ViewId.FOLDERS)
+            .setMimeTypes(FOLDER_TYPE)
+            .setIncludeFolders(true)
+            .setSelectFolderEnabled(true)
+            .setParent(folderId);
+        const [chosen] = await openPicker(view, { multiselect: false });
+        if (!chosen) {
+            const error = new Error('Saving was cancelled.');
+            error.cancelled = true;
+            throw error;
+        }
+        return upload(bytes, name, chosen.id);
+    }
+
+    async function folderName(folderId) {
+        try {
+            const res = await driveFetch(`${API}/files/${encodeURIComponent(folderId)}?fields=name&supportsAllDrives=true`);
+            return (await res.json()).name;
+        } catch (e) {
+            return null; // not accessible yet under drive.file; the name is only cosmetic
+        }
+    }
+
+    function disconnect() {
+        if (token && window.google && window.google.accounts) window.google.accounts.oauth2.revoke(token.value, () => {});
+        token = null;
+    }
+
+    // Start loading Google's scripts early (e.g. on hover) so the sign-in
+    // pop-up opens straight from the click and isn't blocked.
+    function preload() {
+        if (isConfigured()) loadScripts().catch(() => {});
+    }
+
+    return { isConfigured, parseDriveLink, preload, connect, pick, download, saveToFolder, folderName, disconnect };
+})();
