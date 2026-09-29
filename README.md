@@ -4,7 +4,7 @@
 A free, client-side PDF toolkit. It started as a PDF merger and has grown into a full set of browser-based tools — merge, split, organize, rotate, crop, watermark, number, compress, and convert PDFs — with every tool processing files locally, with no server upload.
 
 ## Tools
-* **Merge PDF** (`index.html`) — combine multiple PDFs into one, with an optional clickable table of contents
+* **Merge PDF** (`index.html`) — combine multiple PDFs into one, with an optional clickable table of contents. Word (`.docx`) files and images can be dropped in too; they're converted to PDF in the browser and merged alongside the PDFs
 * **Split PDF** (`pages/split.html`) — split by page ranges or every N pages
 * **Organize PDF** (`pages/organize.html`) — reorder or delete pages via thumbnails
 * **Rotate PDF** (`pages/rotate.html`) — rotate all or selected pages by 90°/180°/270°
@@ -79,6 +79,7 @@ js/                       # One script per tool, plus shared modules
 │   page-numbers.js, compress.js, pdf-to-pdfa.js, html-to-pdf.js,
 │   jpg-to-pdf.js, pdf-to-jpg.js
 ├── image-to-pdf.js      # Shared image -> PDF conversion (used by the merger and JPG to PDF)
+├── docx-to-pdf.js       # Word (.docx) -> PDF conversion for the merger
 ├── pdf-loader.js        # Shared "robustly load a possibly-imperfect PDF" helper
 ├── page-ranges.js       # Shared "1-3, 5, 8-10" page-range parser
 └── github-star.js       # Live GitHub star count button
@@ -87,13 +88,14 @@ CDN dependencies (no local files):
 ├── pdf-lib              # PDF creation, editing, and merging
 ├── pdf.js               # Page rendering (previews, thumbnails, PDF to JPG, Compress)
 ├── tsparticles-confetti # Success celebration animation
-├── html2canvas          # HTML to PDF only - DOM-to-canvas rasterization
+├── html2canvas          # HTML to PDF, and Word files in the merger - DOM-to-canvas rasterization
+├── jszip + docx-preview # Merger only, loaded when a Word file is added - .docx layout
 └── jsPDF                # HTML to PDF only - assembling the final PDF
 ```
 
 ## Technical Details
 * **Built with**: HTML5, CSS3, JavaScript ES6+, no build step or framework
-* **Libraries (loaded from CDN, internet required)**: `@cantoo/pdf-lib` (a pdf-lib fork with decryption support), `pdf.js`, `tsparticles-confetti`, and — only on the HTML to PDF page — `html2canvas` and `jsPDF`
+* **Libraries (loaded from CDN, internet required)**: `@cantoo/pdf-lib` (a pdf-lib fork with decryption support), `pdf.js`, `tsparticles-confetti`, and — only on the HTML to PDF page — `html2canvas` and `jsPDF`. The merger loads `jszip`, `docx-preview` and `html2canvas` on demand, only when a Word file is added
 * **File limit**: 100MB per file (browser memory dependent)
 * **Supported**: Standard PDF files, including encrypted ones (RC4/AES-128/AES-256 password security). Certificate-based encryption isn't supported
 * **Processing**: Client-side only, no server uploads required
@@ -102,6 +104,7 @@ CDN dependencies (no local files):
 * **Content Security Policy**: every page ships a strict CSP; only the exact CDN hosts and pinned versions each tool needs are allowlisted
 * **Subresource Integrity**: every CDN script is loaded with a SHA-384 integrity hash
 * **HTML to PDF sandboxing**: the uploaded `.html` file is rendered inside a hidden `<iframe sandbox="allow-same-origin">` (no `allow-scripts`), and `<script>` tags/inline event handlers are stripped before rendering as a second layer of defense. External resources referenced by the file (images, fonts, stylesheets) are not fetched
+* **Word to PDF in the merger**: `.docx` files are laid out with `docx-preview` and each page is captured as a high-resolution image, so the result looks like the document but its text isn't selectable or searchable. Layout is close to Word's but not identical (complex floating shapes, SmartArt and some fonts may differ). Legacy binary `.doc` files aren't supported. Re-save them as `.docx` first
 * **Compress PDF trade-off**: compression works by re-rendering each page as a JPEG image, which can shrink scanned/image-heavy PDFs significantly but makes the resulting text non-selectable and non-searchable; it is not a good fit for text-only documents
 * **PDF to PDF/A is best-effort**: it adds PDF/A identification metadata (XMP) but does not guarantee ISO 19005 conformance and has not been checked against official validators (e.g. veraPDF)
 * See [privacy.html](pages/privacy.html) for the full, user-facing security overview

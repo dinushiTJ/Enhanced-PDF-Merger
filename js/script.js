@@ -16,6 +16,7 @@ let draggedId = null;
 let includeToc = true;
 let activeDownloadUrl = null;
 let mergeInProgress = false;
+let conversionsPending = 0; // Word files still being converted to PDF
 
 function revokeActiveDownloadUrl() {
     if (activeDownloadUrl) {
@@ -95,9 +96,16 @@ dragDropArea.addEventListener('drop', (e) => {
     e.preventDefault();
     dragDropArea.classList.remove('dragover');
 
-    const files = Array.from(e.dataTransfer.files).filter(file => file.type === 'application/pdf' || ImageToPdf.isSupportedImage(file));
-    files.forEach(file => addPdfFile(file));
+    addFiles(Array.from(e.dataTransfer.files));
 });
+
+// Add files one after another so converted Word/image files keep the order
+// they were dropped or selected in.
+async function addFiles(files) {
+    for (const file of files) {
+        await addPdfFile(file);
+    }
+}
 
 dragDropArea.addEventListener('click', () => {
     addFileBtn.click();
@@ -106,10 +114,10 @@ dragDropArea.addEventListener('click', () => {
 addFileBtn.addEventListener('click', () => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.pdf,.jpg,.jpeg,.png,.webp,.gif,.bmp';
+    input.accept = '.pdf,.docx,.jpg,.jpeg,.png,.webp,.gif,.bmp';
     input.multiple = true;
     input.onchange = (e) => {
-        Array.from(e.target.files).forEach(file => addPdfFile(file));
+        addFiles(Array.from(e.target.files));
     };
     input.click();
 });
@@ -129,9 +137,15 @@ tocToggle.addEventListener('change', () => {
 });
 
 async function addPdfFile(file) {
-    const isImage = file.type !== 'application/pdf' && ImageToPdf.isSupportedImage(file);
-    if (file.type !== 'application/pdf' && !isImage) {
-        alert('Please select only PDF or image (JPG, PNG, WEBP, GIF, BMP) files.');
+    const isPdf = file.type === 'application/pdf' || (!file.type && /\.pdf$/i.test(file.name));
+    const isWord = !isPdf && DocxToPdf.isDocx(file);
+    const isImage = !isPdf && !isWord && ImageToPdf.isSupportedImage(file);
+    if (!isPdf && !isWord && DocxToPdf.isLegacyDoc(file)) {
+        alert(`"${file.name}" is an older Word (.doc) file, which can't be converted in the browser. Open it in Word and use "Save As" → .docx (or PDF), then add it again.`);
+        return;
+    }
+    if (!isPdf && !isWord && !isImage) {
+        alert('Please select only PDF, Word (.docx) or image (JPG, PNG, WEBP, GIF, BMP) files.');
         return;
     }
 
@@ -160,6 +174,29 @@ async function addPdfFile(file) {
         } catch (e) {
             alert(`Could not convert "${file.name}" to PDF: ${e.message}`);
             return;
+        }
+    }
+
+    if (isWord) {
+        const progress = document.getElementById('progress');
+        const showStatus = !mergeInProgress;
+        if (showStatus) {
+            progress.textContent = `Converting "${file.name}" to PDF...`;
+            progress.style.display = 'block';
+        }
+        conversionsPending++;
+        updateUI();
+        try {
+            const pdfBytes = await DocxToPdf.docxFileToPdfBytes(file);
+            const pdfName = file.name.replace(/\.docx$/i, '') + '.pdf';
+            file = new File([pdfBytes], pdfName, { type: 'application/pdf' });
+        } catch (e) {
+            alert(`Could not convert "${file.name}" to PDF: ${e.message}`);
+            return;
+        } finally {
+            conversionsPending--;
+            updateUI();
+            if (showStatus && !mergeInProgress) progress.style.display = 'none';
         }
     }
 
@@ -603,8 +640,9 @@ function updateUI() {
         // and every password-protected file is unlocked (or removed).
         const blocked = Array.from(pdfFiles.values())
             .some(d => d.lock === 'checking' || d.lock === 'locked' || d.lock === 'failed');
-        mergeBtn.disabled = blocked;
-        mergeBtn.title = blocked ? 'Unlock or remove the password-protected PDFs first' : '';
+        mergeBtn.disabled = blocked || conversionsPending > 0;
+        mergeBtn.title = blocked ? 'Unlock or remove the password-protected PDFs first'
+            : conversionsPending > 0 ? 'Wait for the Word files to finish converting' : '';
     }
 }
 

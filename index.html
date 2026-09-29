@@ -7,7 +7,7 @@
     <meta name="description" content="PDF Pool is a free set of browser-based PDF tools: merge, split, organize, rotate, crop, watermark, compress, and convert PDFs, all without uploading your files.">
     <meta name="robots" content="index, follow">
     <meta name="referrer" content="no-referrer">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' blob:; connect-src 'self' https://api.github.com; object-src 'none'; base-uri 'self'; form-action 'self'">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' blob: data:; connect-src 'self' https://api.github.com; object-src 'none'; base-uri 'self'; form-action 'self'">
     <link rel="canonical" href="https://dinushitj.github.io/Enhanced-PDF-Merger/">
     <meta name="theme-color" content="#fff7fb">
     <meta property="og:type" content="website">
@@ -85,7 +85,7 @@
     </div>
 
     <div class="drag-drop-area" id="dragDropArea">
-        <div class="drag-drop-text"><svg class="drag-drop-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 13v8"/><path d="m8 17 4-4 4 4"/><path d="M20 16.58A5 5 0 0 0 18 7h-1.26A8 8 0 1 0 4 15.25"/></svg>Drag &amp; Drop PDF files here</div>
+        <div class="drag-drop-text"><svg class="drag-drop-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 13v8"/><path d="m8 17 4-4 4 4"/><path d="M20 16.58A5 5 0 0 0 18 7h-1.26A8 8 0 1 0 4 15.25"/></svg>Drag &amp; Drop PDF, Word or image files here</div>
         <div class="drag-drop-subtext">or click "Add PDF File" below</div>
     </div>
 
@@ -97,7 +97,7 @@
                 <div class="empty-state-icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg></div>
                 <div>No PDF files added yet</div>
                 <div class="empty-state-hint">
-                    Click "Add PDF File" or drag & drop files to get started
+                    Click "Add PDF File" or drag & drop PDF, Word (.docx) or image files to get started
                 </div>
             </div>
         </div>
@@ -128,6 +128,7 @@
 </footer>
 
 <script src="js/image-to-pdf.js"></script>
+<script src="js/docx-to-pdf.js"></script>
 <script src="js/script.js"></script>
 <script src="js/github-star.js" defer></script>
 </body>

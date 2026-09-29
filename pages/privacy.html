@@ -63,7 +63,7 @@
             <article class="security-card">
                 <span class="security-card-label">02 / Integrity</span>
                 <h2>Dependencies pinned</h2>
-                <p>Every CDN script (pdf-lib, PDF.js, canvas-confetti, and — only on the HTML to PDF page — html2canvas and jsPDF) is loaded from a pinned version with a Subresource Integrity hash. The PDF.js worker is served locally.</p>
+                <p>Every CDN script (pdf-lib, PDF.js, canvas-confetti, and — only on the HTML to PDF page — html2canvas and jsPDF; on the merger, JSZip, docx-preview and html2canvas are loaded only when you add a Word file) is loaded from a pinned version with a Subresource Integrity hash. The PDF.js worker is served locally.</p>
             </article>
             <article class="security-card">
                 <span class="security-card-label">03 / Resilience</span>
@@ -120,6 +120,7 @@
             </div>
             <div class="security-copy">
                 <p><strong>HTML to PDF</strong> loads your uploaded file into a sandboxed, hidden frame with scripting disabled (embedded <code>&lt;script&gt;</code> tags are also stripped as a second layer of defense) before rendering a visual snapshot. External images, fonts, or stylesheets referenced by the file are not fetched, so nothing about your file or your browser is leaked to a third party. The file is never uploaded anywhere.</p>
+                <p><strong>Word files in the merger</strong> are unpacked and laid out entirely in your browser, then each page is captured as an image to build the PDF. The document is never uploaded, and its text is not selectable in the result.</p>
                 <p><strong>Compress PDF</strong> re-renders each page as a compressed image, which shrinks scanned or image-heavy PDFs but makes the resulting text non-selectable and non-searchable. This happens entirely in your browser; nothing is uploaded.</p>
                 <p><strong>PDF to PDF/A</strong> adds PDF/A identification metadata to your file. It is not a certified conformance tool and has not been validated against official PDF/A validators — do not rely on it for legally or archivally mandated compliance.</p>
             </div>
