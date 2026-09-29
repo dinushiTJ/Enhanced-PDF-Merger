@@ -269,12 +269,55 @@ const DocxToPdf = (() => {
 
     const SKIP_MARKER_PROPS = /^(content|counter-(reset|set|increment))$/;
 
+    // Word's default bullets use private-use code points from the Symbol and
+    // Wingdings fonts (e.g. U+F0B7), which browsers can't draw without those
+    // fonts. Map the common ones to their standard Unicode characters.
+    const SYMBOL_CHARS = {
+        symbol: { 0xB7: '•', 0xA7: '♣', 0xA8: '♦', 0xA9: '♥', 0xAA: '♠', 0xD8: '¬', 0xAE: '→', 0x2D: '−', 0xB0: '°', 0xB1: '±', 0xB4: '×', 0xB8: '÷' },
+        wingdings: {
+            0x9F: '•', 0xA7: '▪', 0x6C: '●', 0x6E: '■', 0x6F: '□', 0x71: '❑', 0x75: '◆', 0x76: '❖', 0x77: '⬥',
+            0xA8: '◻', 0xD8: '➢', 0xE0: '→', 0xE8: '➔', 0xF0: '⇨', 0xFB: '✗', 0xFC: '✓', 0xFD: '☒', 0xFE: '☑', 0x6D: '❍', 0x70: '◻'
+        }
+    };
+    const PRIVATE_USE = /[-]/g;
+
+    function symbolTable(fontFamily) {
+        const first = fontFamily.split(',')[0].trim().replace(/^["']|["']$/g, '').toLowerCase();
+        if (first.startsWith('symbol')) return SYMBOL_CHARS.symbol;
+        if (/^(wingdings|webdings)/.test(first)) return SYMBOL_CHARS.wingdings;
+        return null;
+    }
+
+    function mapSymbolChars(text, table) {
+        return text.replace(PRIVATE_USE, (ch) => table[ch.charCodeAt(0) - 0xF000] || '•');
+    }
+
+    // Replace Symbol/Wingdings private-use characters in ordinary text with
+    // Unicode equivalents, and let that text use the surrounding font.
+    function mapSymbolText(root) {
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+        const hits = [];
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+            if (!/[-]/.test(node.data) || !node.parentElement) continue;
+            const table = symbolTable(getComputedStyle(node.parentElement).fontFamily);
+            if (table) hits.push([node, table]);
+        }
+        for (const [node, table] of hits) {
+            node.data = mapSymbolChars(node.data, table);
+            const block = node.parentElement.closest('p, td, th, li, div') || node.parentElement.parentElement;
+            if (block) node.parentElement.style.setProperty('font-family', getComputedStyle(block).fontFamily);
+        }
+    }
+
     function materializeMarkers(root) {
         const counters = new Map();
         const markers = [];
+        const hidden = new Set(); // display:none subtrees don't touch counters
         for (const el of root.querySelectorAll('*')) {
             if (el.closest('svg')) continue;
-            applyCounters(getComputedStyle(el), counters);
+            const style = getComputedStyle(el);
+            if (hidden.has(el.parentElement) || style.display === 'none') { hidden.add(el); continue; }
+            applyCounters(style, counters);
             const before = getComputedStyle(el, '::before');
             if (!before.content || before.content === 'none' || before.content === 'normal') continue;
             applyCounters(before, counters);
@@ -288,7 +331,13 @@ const DocxToPdf = (() => {
             for (const prop of before) {
                 if (!SKIP_MARKER_PROPS.test(prop)) marker.style.setProperty(prop, before.getPropertyValue(prop));
             }
-            marker.textContent = text;
+            const table = symbolTable(before.fontFamily);
+            if (table && /[-]/.test(text)) {
+                marker.textContent = mapSymbolChars(text, table);
+                marker.style.setProperty('font-family', getComputedStyle(el).fontFamily);
+            } else {
+                marker.textContent = text;
+            }
             el.setAttribute(MARKER_ATTR, '');
             el.prepend(marker);
         }
@@ -881,29 +930,54 @@ const DocxToPdf = (() => {
         document.body.appendChild(host);
 
         try {
-            await window.docx.renderAsync(data, host, host, {
-                className: 'docx',
-                inWrapper: false,
-                breakPages: true,
-                // Word's saved page positions don't match browser font
-                // metrics exactly; honoring them leaves near-empty pages
-                // wherever a page overflows. paginate() lays pages out instead.
-                ignoreLastRenderedPageBreak: true,
-                ignoreWidth: false,
-                ignoreHeight: false,
-                renderHeaders: true,
-                renderFooters: true,
-                renderFootnotes: true,
-                renderEndnotes: true,
-                useBase64URL: true,   // data: URLs fit the page CSP (no blob: images)
-                experimental: true    // tab stops
-            });
+            // docx-preview sizes tab stops in a setTimeout(..., 500) scheduled at
+            // the end of rendering. Hold that callback back and run it once the
+            // final fonts are in place, so tab widths match the laid-out text.
+            const deferredTabStops = [];
+            const nativeSetTimeout = window.setTimeout;
+            window.setTimeout = function (callback, delay, ...args) {
+                if (delay === 500 && typeof callback === 'function') {
+                    deferredTabStops.push(callback);
+                    return 0;
+                }
+                return nativeSetTimeout.call(window, callback, delay, ...args);
+            };
+            try {
+                await window.docx.renderAsync(data, host, host, {
+                    className: 'docx',
+                    inWrapper: false,
+                    breakPages: true,
+                    // Word's saved page positions don't match browser font
+                    // metrics exactly; honoring them leaves near-empty pages
+                    // wherever a page overflows. paginate() lays pages out instead.
+                    ignoreLastRenderedPageBreak: true,
+                    ignoreWidth: false,
+                    ignoreHeight: false,
+                    renderHeaders: true,
+                    renderFooters: true,
+                    renderFootnotes: true,
+                    renderEndnotes: true,
+                    useBase64URL: true,   // data: URLs fit the page CSP (no blob: images)
+                    experimental: true    // tab stops
+                });
+            } finally {
+                window.setTimeout = nativeSetTimeout;
+            }
+
+            // Word only hyphenates when the document turns it on; docx-preview
+            // hyphenates everything, and the browser's inserted hyphens aren't
+            // part of the text, so they'd be lost from the PDF.
+            const layoutStyle = document.createElement('style');
+            layoutStyle.textContent = 'section.docx,section.docx *{-webkit-hyphens:manual!important;hyphens:manual!important}';
+            host.appendChild(layoutStyle);
 
             // Lay text out with the fonts that will be embedded, then wait for
             // images so pages are measured correctly.
+            mapSymbolText(host);
             materializeMarkers(host);
             const textLayer = await applyDocumentFonts(host);
             if (document.fonts && document.fonts.ready) await document.fonts.ready;
+            deferredTabStops.forEach((callback) => callback());
             fixImageTypes(host);
             await Promise.all(Array.from(host.querySelectorAll('img'), (img) => img.decode().catch(() => {})));
 
